@@ -1,5 +1,6 @@
 """End-to-end test — run GEPA via CLI with mock LLM, validate full pipeline."""
 
+import argparse
 import json
 import subprocess
 import sys
@@ -222,6 +223,46 @@ def test_knob_overrides():
         knobs = json.loads((output_dir / "knobs.json").read_text())
         assert knobs["temperature"] == 0.9
         assert knobs["parent_selection"] == "pareto"
+
+
+class TestProviderAutoDetection:
+    """Unit tests for _resolve_provider auto-detection logic (no API calls)."""
+
+    def _make_args(self, mock_llm: bool = False, provider: str = "auto") -> argparse.Namespace:
+        return argparse.Namespace(mock_llm=mock_llm, provider=provider, mock_responses=None)
+
+    def test_mock_llm_flag_overrides_provider(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        from srf.cli import _resolve_provider
+        assert _resolve_provider(self._make_args(mock_llm=True)) == "mock"
+
+    def test_explicit_provider_openai(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        from srf.cli import _resolve_provider
+        assert _resolve_provider(self._make_args(provider="openai")) == "openai"
+
+    def test_explicit_provider_anthropic(self, monkeypatch):
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        from srf.cli import _resolve_provider
+        assert _resolve_provider(self._make_args(provider="anthropic")) == "anthropic"
+
+    def test_auto_prefers_openai_over_anthropic(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+        from srf.cli import _resolve_provider
+        assert _resolve_provider(self._make_args()) == "openai"
+
+    def test_auto_falls_back_to_anthropic(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+        from srf.cli import _resolve_provider
+        assert _resolve_provider(self._make_args()) == "anthropic"
+
+    def test_auto_no_keys_returns_none(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        from srf.cli import _resolve_provider
+        assert _resolve_provider(self._make_args()) == "none"
 
 
 def _read_jsonl(path: Path) -> list[dict]:

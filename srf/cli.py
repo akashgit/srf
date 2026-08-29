@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -35,6 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     run_parser.add_argument("--output-dir", type=str, default=None, help="Output directory")
     run_parser.add_argument("--mock-llm", action="store_true", help="Use mock LLM for testing")
     run_parser.add_argument("--mock-responses", type=str, default=None, help="Path to JSON file with mock responses")
+    run_parser.add_argument("--provider", choices=["mock", "openai", "anthropic", "auto"], default="auto", help="LLM provider (default: auto-detect)")
 
     subparsers.add_parser("modes", help="List registered modes")
 
@@ -63,8 +65,20 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
 
+def _resolve_provider(args: argparse.Namespace) -> str:
+    if args.mock_llm:
+        return "mock"
+    if args.provider != "auto":
+        return args.provider
+    if os.environ.get("OPENAI_API_KEY"):
+        return "openai"
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return "anthropic"
+    return "none"
+
+
 def _cmd_run(args: argparse.Namespace) -> int:
-    from srf._factory_shim import ExecutionContext, HttpxLLMClient, MockLLMClient, WorkflowExecutor
+    from srf._factory_shim import ExecutionContext, HttpxLLMClient, MockLLMClient, OpenAILLMClient, WorkflowExecutor
     from srf.ops.common.budget import init_budget
     from srf.ops.common.tracing import init_trace_dir
     from srf.ops.gepa.population import init_population
@@ -101,17 +115,27 @@ def _cmd_run(args: argparse.Namespace) -> int:
         output_dir = Path("outputs") / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if args.mock_llm:
+    provider = _resolve_provider(args)
+    if provider == "mock":
         responses = None
         if args.mock_responses:
             responses = json.loads(Path(args.mock_responses).read_text())
         llm_client = MockLLMClient(responses=responses)
-    else:
+    elif provider == "openai":
+        try:
+            llm_client = OpenAILLMClient()
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+    elif provider == "anthropic":
         try:
             llm_client = HttpxLLMClient()
         except ValueError as e:
-            print(f"Error: {e}. Use --mock-llm for testing without an API key.", file=sys.stderr)
+            print(f"Error: {e}", file=sys.stderr)
             return 1
+    else:
+        print("Error: No LLM API key found. Set OPENAI_API_KEY or ANTHROPIC_API_KEY, or use --mock-llm.", file=sys.stderr)
+        return 1
 
     ctx = ExecutionContext(
         work_dir=output_dir,

@@ -191,6 +191,53 @@ class HttpxLLMClient:
         )
 
 
+class OpenAILLMClient:
+    MODEL_MAP = {
+        "sonnet": "gpt-4o-mini",
+        "opus": "gpt-4o",
+        "haiku": "gpt-4o-mini",
+    }
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
+        if not self.api_key:
+            raise ValueError("OPENAI_API_KEY required for OpenAI LLM calls")
+
+    def generate(
+        self, system_prompt: str, user_prompt: str, model: str, temperature: float
+    ) -> LLMResponse:
+        import httpx
+
+        model_id = self.MODEL_MAP.get(model, model)
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": user_prompt})
+        resp = httpx.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model_id,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": 4096,
+            },
+            timeout=120.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"]
+        usage = data.get("usage", {})
+        return LLMResponse(
+            content=content,
+            input_tokens=usage.get("prompt_tokens", 0),
+            output_tokens=usage.get("completion_tokens", 0),
+        )
+
+
 class MockLLMClient:
     def __init__(self, responses: list[str] | None = None):
         self._responses = list(responses or [])
