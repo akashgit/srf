@@ -1,0 +1,14 @@
+name: trimul
+category: gpu
+description: "Optimize triple matrix multiplication A @ B @ C for square matrices. Minimize wall-clock time while maintaining correctness against numpy reference."
+initial_code: |
+  import numpy as np
+
+  def solve(A: np.ndarray, B: np.ndarray, C: np.ndarray) -> np.ndarray:
+      """Compute A @ B @ C."""
+      return A @ B @ C
+eval_command: "python eval.py"
+metric: score
+maximize: true
+timeout: 60
+reference_score: 1.0

@@ -1,0 +1,17 @@
+name: circle_packing
+category: math
+description: "Pack N circles of varying radii into a unit square, maximizing the sum of radii placed without overlaps or boundary violations."
+initial_code: |
+  def solve(n: int, radii: list[float]) -> list[tuple[float, float]]:
+      """Pack circles into a unit square. Returns list of (x, y) centers."""
+      centers = []
+      for i, r in enumerate(radii):
+          x = min(max(r, (i % 5) * 0.2 + 0.1), 1.0 - r)
+          y = min(max(r, (i // 5) * 0.2 + 0.1), 1.0 - r)
+          centers.append((x, y))
+      return centers
+eval_command: "python eval.py"
+metric: score
+maximize: true
+timeout: 30
+reference_score: 2.634

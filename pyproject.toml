@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "srf"
+version = "0.1.0"
+description = "Scientific Research Factory — 13 AI-driven scientific discovery harnesses as composable factory workflow Packages"
+requires-python = ">=3.12"
+dependencies = [
+    "structlog>=24.1.0",
+    "pydantic>=2.10",
+    "httpx[http2]>=0.27.0",
+]
+
+[project.scripts]
+srf = "srf.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["srf*"]
+
+[tool.setuptools.package-data]
+"srf" = ["tasks/**/*.yaml"]
