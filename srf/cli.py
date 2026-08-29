@@ -36,7 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     run_parser.add_argument("--output-dir", type=str, default=None, help="Output directory")
     run_parser.add_argument("--mock-llm", action="store_true", help="Use mock LLM for testing")
     run_parser.add_argument("--mock-responses", type=str, default=None, help="Path to JSON file with mock responses")
-    run_parser.add_argument("--provider", choices=["mock", "openai", "anthropic", "auto"], default="auto", help="LLM provider (default: auto-detect)")
+    run_parser.add_argument("--provider", choices=["mock", "openai", "vertex", "anthropic", "auto"], default="auto", help="LLM provider (default: auto-detect)")
 
     subparsers.add_parser("modes", help="List registered modes")
 
@@ -72,13 +72,15 @@ def _resolve_provider(args: argparse.Namespace) -> str:
         return args.provider
     if os.environ.get("OPENAI_API_KEY"):
         return "openai"
+    if os.environ.get("ANTHROPIC_VERTEX_PROJECT_ID"):
+        return "vertex"
     if os.environ.get("ANTHROPIC_API_KEY"):
         return "anthropic"
     return "none"
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
-    from srf._factory_shim import ExecutionContext, HttpxLLMClient, MockLLMClient, OpenAILLMClient, WorkflowExecutor
+    from srf._factory_shim import ExecutionContext, HttpxLLMClient, MockLLMClient, OpenAILLMClient, VertexAILLMClient, WorkflowExecutor
     from srf.ops.common.budget import init_budget
     from srf.ops.common.tracing import init_trace_dir
     from srf.ops.gepa.population import init_population
@@ -127,6 +129,12 @@ def _cmd_run(args: argparse.Namespace) -> int:
         except ValueError as e:
             print(f"Error: {e}", file=sys.stderr)
             return 1
+    elif provider == "vertex":
+        try:
+            llm_client = VertexAILLMClient()
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
     elif provider == "anthropic":
         try:
             llm_client = HttpxLLMClient()
@@ -134,7 +142,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
             print(f"Error: {e}", file=sys.stderr)
             return 1
     else:
-        print("Error: No LLM API key found. Set OPENAI_API_KEY or ANTHROPIC_API_KEY, or use --mock-llm.", file=sys.stderr)
+        print("Error: No LLM API key found. Set OPENAI_API_KEY, ANTHROPIC_VERTEX_PROJECT_ID, or ANTHROPIC_API_KEY, or use --mock-llm.", file=sys.stderr)
         return 1
 
     ctx = ExecutionContext(

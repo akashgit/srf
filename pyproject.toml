@@ -15,6 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 openai = ["openai>=1.0"]
+vertex = ["google-auth>=2.0"]
 
 [project.scripts]
 srf = "srf.cli:main"

@@ -254,13 +254,41 @@ class TestProviderAutoDetection:
 
     def test_auto_falls_back_to_anthropic(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("ANTHROPIC_VERTEX_PROJECT_ID", raising=False)
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
         from srf.cli import _resolve_provider
         assert _resolve_provider(self._make_args()) == "anthropic"
 
+    def test_explicit_provider_vertex(self, monkeypatch):
+        monkeypatch.delenv("ANTHROPIC_VERTEX_PROJECT_ID", raising=False)
+        from srf.cli import _resolve_provider
+        assert _resolve_provider(self._make_args(provider="vertex")) == "vertex"
+
+    def test_auto_vertex_when_project_id_set(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.setenv("ANTHROPIC_VERTEX_PROJECT_ID", "my-gcp-project")
+        from srf.cli import _resolve_provider
+        assert _resolve_provider(self._make_args()) == "vertex"
+
+    def test_auto_openai_preferred_over_vertex(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        monkeypatch.setenv("ANTHROPIC_VERTEX_PROJECT_ID", "my-gcp-project")
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        from srf.cli import _resolve_provider
+        assert _resolve_provider(self._make_args()) == "openai"
+
+    def test_auto_vertex_preferred_over_anthropic(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.setenv("ANTHROPIC_VERTEX_PROJECT_ID", "my-gcp-project")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+        from srf.cli import _resolve_provider
+        assert _resolve_provider(self._make_args()) == "vertex"
+
     def test_auto_no_keys_returns_none(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("ANTHROPIC_VERTEX_PROJECT_ID", raising=False)
         from srf.cli import _resolve_provider
         assert _resolve_provider(self._make_args()) == "none"
 
