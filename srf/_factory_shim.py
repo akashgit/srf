@@ -240,9 +240,9 @@ class OpenAILLMClient:
 
 class VertexAILLMClient:
     MODEL_MAP = {
-        "sonnet": "claude-sonnet-4-20250514",
-        "opus": "claude-opus-4-20250514",
-        "haiku": "claude-haiku-4-5-20251001",
+        "sonnet": "claude-sonnet-4-6",
+        "opus": "claude-opus-4-6",
+        "haiku": "claude-haiku-4-5",
     }
 
     def __init__(
@@ -250,54 +250,30 @@ class VertexAILLMClient:
         project_id: str | None = None,
         region: str | None = None,
     ):
+        from anthropic import AnthropicVertex
+
         self.project_id = project_id or os.environ.get("ANTHROPIC_VERTEX_PROJECT_ID", "")
         self.region = region or os.environ.get("CLOUD_ML_REGION", "us-east5")
-        if not self.project_id:
-            raise ValueError("ANTHROPIC_VERTEX_PROJECT_ID required for Vertex AI LLM calls")
-
-    def _get_access_token(self) -> str:
-        import google.auth
-        import google.auth.transport.requests
-
-        credentials, _ = google.auth.default()
-        credentials.refresh(google.auth.transport.requests.Request())
-        return credentials.token
+        if self.region == "global":
+            self.region = "us-east5"
+        self.client = AnthropicVertex(project_id=self.project_id, region=self.region)
 
     def generate(
         self, system_prompt: str, user_prompt: str, model: str, temperature: float
     ) -> LLMResponse:
-        import httpx
-
         model_id = self.MODEL_MAP.get(model, model)
-        token = self._get_access_token()
-        url = (
-            f"https://{self.region}-aiplatform.googleapis.com/v1/"
-            f"projects/{self.project_id}/locations/{self.region}/"
-            f"publishers/anthropic/models/{model_id}:rawPredict"
+        msg = self.client.messages.create(
+            model=model_id,
+            max_tokens=4096,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+            temperature=temperature,
         )
-        resp = httpx.post(
-            url,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "anthropic_version": "vertex-2023-10-16",
-                "max_tokens": 4096,
-                "system": system_prompt,
-                "messages": [{"role": "user", "content": user_prompt}],
-                "temperature": temperature,
-            },
-            timeout=120.0,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        content = data["content"][0]["text"]
-        usage = data.get("usage", {})
+        content = msg.content[0].text
         return LLMResponse(
             content=content,
-            input_tokens=usage.get("input_tokens", 0),
-            output_tokens=usage.get("output_tokens", 0),
+            input_tokens=msg.usage.input_tokens,
+            output_tokens=msg.usage.output_tokens,
         )
 
 
