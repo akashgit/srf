@@ -8,7 +8,7 @@ from typing import Any
 
 import structlog
 
-from srf.ops.gepa.state import load_state
+from srf.ops.gepa.state import load_state, save_state
 
 logger = structlog.get_logger()
 
@@ -24,6 +24,10 @@ def select_parent(ctx: Any) -> None:
     population = ctx.read_json("population.json") or {}
     state = load_state(ctx)
     strategy = ctx.knobs.get("parent_selection", "best")
+
+    state = load_state(ctx)
+    state.last_action = "mutate"
+    save_state(ctx, state)
 
     if not population:
         logger.warning("population.empty")
@@ -100,4 +104,5 @@ def init_population(ctx: Any) -> None:
     ctx.write_json("genealogy.json", {"nodes": {ind_id: {"generation": 0}}, "edges": []})
     ctx.write_json("rejection_history.json", [])
     ctx.write_json("accepted_history.json", [])
+    ctx.write_text("best_solution.py", initial_code)
     logger.info("population.initialized", seed_id=ind_id)

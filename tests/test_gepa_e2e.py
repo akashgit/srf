@@ -64,6 +64,7 @@ def test_cli_run_gepa_e2e():
         assert run_result["eval_count"] >= 1
 
         assert output_dir.exists(), "Output directory not created"
+        assert (output_dir / "best_solution.py").exists(), "Missing best_solution.py"
         assert (output_dir / "evaluations.jsonl").exists(), "Missing evaluations.jsonl"
         assert (output_dir / "candidates.jsonl").exists(), "Missing candidates.jsonl"
         assert (output_dir / "llm_calls.jsonl").exists(), "Missing llm_calls.jsonl"
@@ -154,6 +155,48 @@ def test_cli_unknown_task_error():
         timeout=10,
     )
     assert result.returncode == 1
+
+
+def test_merge_path_e2e():
+    """Run with low stagnation threshold + lenient acceptance so merge triggers."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_dir = Path(tmpdir) / "merge_test"
+
+        result = subprocess.run(
+            [
+                sys.executable, "-m", "srf.cli",
+                "run",
+                "--mode", "gepa",
+                "--task", "circle_packing",
+                "--budget", "5",
+                "--mock-llm",
+                "--knob", "merge_stagnation_threshold=1",
+                "--knob", "acceptance_mode=lenient",
+                "--output-dir", str(output_dir),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+
+        assert result.returncode == 0, f"CLI failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+
+        decisions = _read_jsonl(output_dir / "policy_decisions.jsonl")
+        merge_decisions = [d for d in decisions if d["decision"] == "RELOOP"]
+        assert len(merge_decisions) >= 1, (
+            f"Expected at least one RELOOP (merge) decision, got decisions: "
+            f"{[d['decision'] for d in decisions]}"
+        )
+
+        state = json.loads((output_dir / "gepa_state.json").read_text())
+        assert state["merge_attempts"] >= 1, f"merge_attempts should be >= 1, got {state['merge_attempts']}"
+
+        candidates = _read_jsonl(output_dir / "candidates.jsonl")
+        merge_candidates = [c for c in candidates if c.get("source") == "merge"]
+        assert len(merge_candidates) >= 1, "Expected at least one candidate with source='merge'"
+
+        assert (output_dir / "merge_candidates.json").exists(), "Missing merge_candidates.json"
+        assert (output_dir / "best_solution.py").exists(), "Missing best_solution.py"
 
 
 def test_knob_overrides():

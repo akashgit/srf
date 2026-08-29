@@ -37,13 +37,14 @@ def accept_or_reject(ctx: Any) -> None:
     child_error = eval_result.get("error")
     parent_score = parent.get("score", 0.0)
     parent_id = parent.get("id", "seed")
+    source = state.last_action
 
     child_id = hashlib.sha256(candidate_code.encode()).hexdigest()[:12]
 
     record_eval(ctx)
 
     log_evaluation(ctx, child_id, child_score, child_metrics)
-    log_candidate(ctx, child_id, parent_id, "mutation", hashlib.sha256(candidate_code.encode()).hexdigest()[:16])
+    log_candidate(ctx, child_id, parent_id, source, hashlib.sha256(candidate_code.encode()).hexdigest()[:16])
 
     state.iteration = ctx.iteration
     state.eval_count += 1
@@ -57,7 +58,7 @@ def accept_or_reject(ctx: Any) -> None:
         ctx.write_json("rejection_history.json", rejections)
         return
 
-    is_accepted = _check_acceptance(acceptance_mode, child_score, parent_score, state)
+    is_accepted = _check_acceptance(acceptance_mode, child_score, parent_score, state, source)
 
     if is_accepted:
         population[child_id] = {
@@ -112,11 +113,14 @@ def accept_or_reject(ctx: Any) -> None:
     save_state(ctx, state)
 
 
-def _check_acceptance(mode: str, child_score: float, parent_score: float, state: Any) -> bool:
+def _check_acceptance(mode: str, child_score: float, parent_score: float, state: Any, source: str = "mutate") -> bool:
     if mode == "off":
         return True
     if mode == "lenient":
         return child_score >= parent_score * 0.95
+    # Strict mode: child > parent for mutate, child >= best_parent for merge
+    if source == "merge":
+        return child_score >= parent_score
     return child_score > parent_score
 
 

@@ -20,6 +20,7 @@ class GEPAState(BaseModel):
     population_size: int = 0
     total_accepted: int = 0
     total_rejected: int = 0
+    last_action: str = "mutate"
 
 
 def load_state(ctx: Any) -> GEPAState:

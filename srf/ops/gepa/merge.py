@@ -6,22 +6,31 @@ from typing import Any
 
 import structlog
 
+from srf.ops.gepa.state import load_state, save_state
+
 logger = structlog.get_logger()
 
 
 def find_triplet_or_top2(ctx: Any) -> None:
     """Search genealogy for a valid (i, j, ancestor) triplet; fall back to top-2 by score.
 
-    Reads: population.json, genealogy.json
-    Writes: merge_candidates.json
+    Reads: population.json, genealogy.json, gepa_state.json
+    Writes: merge_candidates.json, selected_parent.json, gepa_state.json
     """
     population = ctx.read_json("population.json") or {}
     genealogy = ctx.read_json("genealogy.json") or {"nodes": {}, "edges": []}
+
+    state = load_state(ctx)
+    state.last_action = "merge"
+    state.merge_attempts += 1
+    save_state(ctx, state)
 
     if len(population) < 2:
         logger.warning("merge.insufficient_population", size=len(population))
         top = list(population.values())
         ctx.write_json("merge_candidates.json", top)
+        if top:
+            _write_merge_parent(ctx, top)
         return
 
     individuals = list(population.values())
@@ -29,6 +38,7 @@ def find_triplet_or_top2(ctx: Any) -> None:
 
     if triplet:
         ctx.write_json("merge_candidates.json", triplet)
+        _write_merge_parent(ctx, triplet)
         logger.info(
             "merge.triplet_found",
             ids=[c["id"] for c in triplet],
@@ -36,10 +46,22 @@ def find_triplet_or_top2(ctx: Any) -> None:
     else:
         top2 = _top_n_by_score(individuals, 2)
         ctx.write_json("merge_candidates.json", top2)
+        _write_merge_parent(ctx, top2)
         logger.info(
             "merge.fallback_top2",
             ids=[c["id"] for c in top2],
         )
+
+
+def _write_merge_parent(ctx: Any, candidates: list[dict]) -> None:
+    """Write the best-scoring merge candidate as selected_parent.json."""
+    best = max(candidates, key=lambda c: c.get("score", 0.0))
+    ctx.write_json("selected_parent.json", {
+        "id": best.get("id", "unknown"),
+        "code": best.get("code", ""),
+        "score": best.get("score", 0.0),
+        "metrics": best.get("metrics", {}),
+    })
 
 
 def _find_triplet(individuals: list[dict], genealogy: dict) -> list[dict] | None:
