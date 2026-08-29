@@ -1,0 +1,46 @@
+{
+  "goal": "Build SRF \u2014 a scientific research factory that reimplements 13 AI-driven scientific discovery harnesses (from Flora Jia's harness-comparison benchmark) as composable factory workflow Packages on top of remote-factory's Package ecosystem. A single research question can be refracted through multiple strategies, each with tunable OptKnobs that the outer loop evolves.",
+  "scope": [],
+  "guards": [
+    "Do not delete or overwrite existing tests \u2014 tests may be extended, never removed",
+    "Do not introduce secrets or credentials \u2014 no API keys, tokens, or passwords in the repo",
+    "Do not modify files outside the declared scope",
+    "All mode Packages must expose the uniform interface: inputs=[Port(\"task\", \"task.yaml\")], outputs=[Port(\"best_solution\", \"best_solution.py\"), Port(\"trace\", \"trace.jsonl\")]",
+    "Every FnNode callable must be importable via its `callable_name` path",
+    "LLMNode model references must use factory-supported model names (sonnet, opus, haiku)",
+    "OptKnob bounds must be non-empty lists with the default value included",
+    "StateContract.requires and .produces must accurately reflect file I/O"
+  ],
+  "eval_command": "python eval/score.py",
+  "eval_threshold": 0.6,
+  "constraints": [],
+  "hypothesis_budget": {
+    "min_growth": 2,
+    "max_new": 2
+  },
+  "target_branch": "main",
+  "smoke_test": "python -c \"import srf; print('SRF imported successfully')\"",
+  "project_eval": [],
+  "eval_weights": {
+    "hygiene": 0.5,
+    "growth": 0.5,
+    "project": 0.0
+  },
+  "research_target": null,
+  "inner_loop": null,
+  "outer_loop": null,
+  "mutable_surfaces": [],
+  "fixed_surfaces": [],
+  "research_constraints": [],
+  "cost_budget": null,
+  "hard_constraints": [],
+  "eval_spec": [],
+  "hygiene_weights": null,
+  "growth_weights": null,
+  "adversarial": null,
+  "parallel": null,
+  "clean_pr": false,
+  "clean_pr_include": [],
+  "clean_pr_exclude": [],
+  "test_timeout": 600
+}
