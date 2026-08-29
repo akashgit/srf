@@ -1,0 +1,518 @@
+gate_has_factory:
+  type: GateNode
+  id: gate_has_factory
+  evaluator_type: fn
+  evaluator_command: python3 -c "from pathlib import Path; exists = Path("{project_path}/.factory/config.json").exists();
+    print("PROCEED" if exists else "HALT")"
+  reads: []
+  edges_out:
+  - target: graph_update
+    condition: PROCEED
+  - target: discover
+    condition: HALT
+discover:
+  type: FnNode
+  id: discover
+  command: factory discover {project_path}
+  reads: []
+  writes:
+  - .factory/eval_profile.json
+  edges_out:
+  - target: gate_factory_md_exists
+    condition: null
+gate_factory_md_exists:
+  type: GateNode
+  id: gate_factory_md_exists
+  evaluator_type: fn
+  evaluator_command: python3 -c "from pathlib import Path; exists = Path("{project_path}/factory.md").exists();
+    print("PROCEED" if exists else "HALT")"
+  reads: []
+  edges_out:
+  - target: factory_init
+    condition: PROCEED
+  - target: create_factory_md
+    condition: HALT
+create_factory_md:
+  type: AgentNode
+  id: create_factory_md
+  role: ceo
+  blocking: 'true'
+  reads:
+  - .factory/eval_profile.json
+  writes:
+  - factory.md
+  edges_out:
+  - target: factory_init
+    condition: null
+  slots:
+    task_prompt_create_factory_md: 'Create factory.md from template. Copy the factory
+      config template to the project root. Fill in: Goal, Scope, Guards, Eval command,
+      Threshold, and Smoke Test. If .factory/eval_spec.json exists, populate the Eval
+      Spec section. If .factory/strategy/current.md has a Research Configuration section,
+      populate research sections (Research Target, Mutable/Fixed Surfaces, etc.).
+
+      Read: .factory/eval_profile.json
+
+      Write output to: factory.md'
+    timeout_create_factory_md: '3600'
+factory_init:
+  type: FnNode
+  id: factory_init
+  command: factory init {project_path}
+  reads:
+  - factory.md
+  writes:
+  - .factory/config.json
+  edges_out:
+  - target: graph_update
+    condition: null
+graph_update:
+  type: FnNode
+  id: graph_update
+  command: factory graph update {project_path}
+  reads: []
+  writes:
+  - graph.json
+  edges_out:
+  - target: study
+    condition: null
+study:
+  type: Study
+  id: study
+  command: factory study {project_path}
+  writes:
+  - .factory/strategy/observations.md
+  edges_out:
+  - target: graph_explorer
+    condition: null
+graph_explorer:
+  type: AgentNode
+  id: graph_explorer
+  role: researcher
+  blocking: 'true'
+  reads:
+  - .factory/strategy/observations.md
+  writes:
+  - .factory/strategy/graph-context.md
+  edges_out:
+  - target: concat_study
+    condition: null
+  slots:
+    task_prompt_graph_explorer: 'Explore the project''s code knowledge graph to build
+      structural understanding. Read .factory/strategy/observations.md for focus context.
+
+
+      **Step 0 — detect graph availability:** Your working directory is already the
+      project root. The graph file lives at `$PROJECT_PATH/graph.json` (NOT inside
+      `.factory/`). Run this smoke check FIRST — use a relative path since your CWD
+      is the project root: `test -f graph.json && echo ''GRAPH AVAILABLE'' || echo
+      ''NO GRAPH''` — if the output says GRAPH AVAILABLE, proceed with the graph commands
+      below. If the output says NO GRAPH, skip to the fallback section.
+
+
+      **If the graph IS available:**
+
+      1. Run `factory graph query "$PROJECT_PATH" "<focus from observations>" --depth
+      2` to find relevant nodes
+
+      2. Run `factory graph explain "$PROJECT_PATH" "<key node>"` on the most important
+      nodes to understand their connections and dependencies
+
+      3. Run `factory graph path "$PROJECT_PATH" "<A>" "<B>"` to trace dependency
+      paths between key components
+
+      4. Write structured findings to .factory/strategy/graph-context.md covering:
+      key modules and their relationships, dependency paths, architectural layers,
+      entry points and hotspots
+
+
+      **If the graph is NOT available**, fall back to direct file exploration:
+
+      1. Use `find . -name ''*.py'' | head -50` to discover source files
+
+      2. Use `grep -rn ''class \|def '' --include=''*.py'' | head -100` to map functions
+      and classes
+
+      3. Use `grep -rn ''import '' --include=''*.py'' | head -100` to trace dependencies
+
+      4. Write the same structured findings to .factory/strategy/graph-context.md
+
+      Read: .factory/strategy/observations.md
+
+      Write output to: .factory/strategy/graph-context.md'
+    timeout_graph_explorer: '600'
+concat_study:
+  type: FnNode
+  id: concat_study
+  command: cat {project_path}/.factory/strategy/observations.md {project_path}/.factory/strategy/graph-context.md
+    > {project_path}/.factory/strategy/study-combined.md
+  reads:
+  - .factory/strategy/graph-context.md
+  - .factory/strategy/observations.md
+  writes:
+  - .factory/strategy/study-combined.md
+  edges_out:
+  - target: fork_research
+    condition: null
+fork_research:
+  type: ForkNode
+  id: fork_research
+  targets: researcher_similar,researcher_techstack,researcher_pitfalls
+  edges_out:
+  - target: researcher_similar
+    condition: null
+  - target: researcher_techstack
+    condition: null
+  - target: researcher_pitfalls
+    condition: null
+researcher_similar:
+  type: AgentNode
+  id: researcher_similar
+  role: researcher
+  blocking: 'true'
+  reads:
+  - .factory/strategy/study-combined.md
+  writes:
+  - .factory/strategy/research-similar.md
+  edges_out:
+  - target: join_research
+    condition: null
+  slots:
+    task_prompt_researcher_similar: 'Similar projects research. Read .factory/strategy/study-combined.md
+      for project context (observations + structural graph analysis). Search the web
+      for similar projects, existing solutions, and prior art. Analyze their strengths,
+      weaknesses, and market positioning. Check .factory/archive/ for prior knowledge
+      on similar builds. Write findings to .factory/strategy/research-similar.md covering:
+      similar projects found (with links), what they do well and what''s missing,
+      differentiation opportunities.
+
+      Read: .factory/strategy/study-combined.md
+
+      Write output to: .factory/strategy/research-similar.md'
+    timeout_researcher_similar: '600'
+researcher_techstack:
+  type: AgentNode
+  id: researcher_techstack
+  role: researcher
+  blocking: 'true'
+  reads:
+  - .factory/strategy/study-combined.md
+  writes:
+  - .factory/strategy/research-techstack.md
+  edges_out:
+  - target: join_research
+    condition: null
+  slots:
+    task_prompt_researcher_techstack: 'Tech stack research. Read .factory/strategy/study-combined.md
+      for project context (observations + structural graph analysis). Identify the
+      best technology stack for this type of project. Find architecture patterns and
+      best practices. Evaluate framework/library options with trade-offs. Write findings
+      to .factory/strategy/research-techstack.md covering: recommended tech stack
+      with rationale, architecture patterns, framework comparisons.
+
+      Read: .factory/strategy/study-combined.md
+
+      Write output to: .factory/strategy/research-techstack.md'
+    timeout_researcher_techstack: '600'
+researcher_pitfalls:
+  type: AgentNode
+  id: researcher_pitfalls
+  role: researcher
+  blocking: 'true'
+  reads:
+  - .factory/strategy/study-combined.md
+  writes:
+  - .factory/strategy/research-pitfalls.md
+  edges_out:
+  - target: join_research
+    condition: null
+  slots:
+    task_prompt_researcher_pitfalls: 'Pitfalls and scope research. Read .factory/strategy/study-combined.md
+      for project context (observations + structural graph analysis). Identify potential
+      pitfalls and common mistakes for this type of project. Research MVP scope best
+      practices. Check .factory/archive/ for lessons from past builds. Write findings
+      to .factory/strategy/research-pitfalls.md covering: potential pitfalls to avoid,
+      MVP scope recommendation, lessons from similar past builds.
+
+      Read: .factory/strategy/study-combined.md
+
+      Write output to: .factory/strategy/research-pitfalls.md'
+    timeout_researcher_pitfalls: '600'
+join_research:
+  type: JoinNode
+  id: join_research
+  sources: researcher_similar,researcher_techstack,researcher_pitfalls
+  reads: []
+  writes: []
+  edges_out:
+  - target: gate_research
+    condition: null
+gate_research:
+  type: GateNode
+  id: gate_research
+  evaluator_type: agent
+  evaluator_role: ceo
+  reads:
+  - .factory/strategy/research-pitfalls.md
+  - .factory/strategy/research-similar.md
+  - .factory/strategy/research-techstack.md
+  edges_out:
+  - target: strategist
+    condition: PROCEED
+  - target: fork_research
+    condition: RELOOP
+  slots:
+    gate_prompt_gate_research: Is the research relevant? Does it cover the technology
+      landscape adequately? Check for gaps in similar projects, tech stack analysis,
+      and pitfall coverage.
+    max_iterations_gate_research: '3'
+strategist:
+  type: AgentNode
+  id: strategist
+  role: strategist
+  blocking: 'true'
+  reads:
+  - .factory/strategy/research-pitfalls.md
+  - .factory/strategy/research-similar.md
+  - .factory/strategy/research-techstack.md
+  - .factory/strategy/study-combined.md
+  writes:
+  - .factory/strategy/current.md
+  edges_out:
+  - target: gate_strategy
+    condition: null
+  slots:
+    task_prompt_strategist: 'Synthesize a project specification from study and research.
+      If .factory/strategy/study-combined.md exists, read it for project observations
+      and structural graph analysis. Read ALL research files at .factory/strategy/research-similar.md,
+      research-techstack.md, and research-pitfalls.md. Produce a complete phased build
+      plan. Phase 1 must be project scaffold + eval harness. Every Phase must have
+      substantive What/Why/Expected impact fields. Build EVERYTHING in this pass.
+      Only defer items requiring human intervention. Write the plan to .factory/strategy/current.md.
+
+      Read: .factory/strategy/research-pitfalls.md, .factory/strategy/research-similar.md,
+      .factory/strategy/research-techstack.md, .factory/strategy/study-combined.md
+
+      Write output to: .factory/strategy/current.md'
+    timeout_strategist: '600'
+gate_strategy:
+  type: GateNode
+  id: gate_strategy
+  evaluator_type: user
+  reads:
+  - .factory/strategy/current.md
+  edges_out:
+  - target: archivist_plan
+    condition: PROCEED
+  - target: strategist
+    condition: RELOOP
+  slots:
+    max_iterations_gate_strategy: '3'
+archivist_plan:
+  type: AgentNode
+  id: archivist_plan
+  role: archivist
+  blocking: 'false'
+  reads:
+  - .factory/strategy/current.md
+  writes:
+  - .factory/archive/plan.md
+  edges_out:
+  - target: builder
+    condition: null
+  slots:
+    task_prompt_archivist_plan: 'Archive the approved research and strategy.
+
+      Read: .factory/strategy/current.md
+
+      Write output to: .factory/archive/plan.md'
+    timeout_archivist_plan: '300'
+builder:
+  type: AgentNode
+  id: builder
+  role: builder
+  blocking: 'true'
+  reads:
+  - .factory/strategy/current.md
+  writes:
+  - .factory/reviews/builder-latest.md
+  edges_out:
+  - target: gate_build
+    condition: null
+  slots:
+    task_prompt_builder: 'Implement the next phase from .factory/strategy/current.md.
+      Read the CEO''s plan approval at .factory/reviews/ceo-verdict-strategist.md.
+      Read CLAUDE.md and factory.md if they exist. Implement exactly what the current
+      phase describes. Run tests. Commit changes and open a draft PR.
+
+      Read: .factory/strategy/current.md
+
+      Write output to: .factory/reviews/builder-latest.md'
+    timeout_builder: '1200'
+gate_build:
+  type: GateNode
+  id: gate_build
+  evaluator_type: agent
+  evaluator_role: ceo
+  reads:
+  - .factory/reviews/builder-latest.md
+  edges_out:
+  - target: fork_qa
+    condition: PROCEED
+  - target: builder
+    condition: RELOOP
+  slots:
+    gate_prompt_gate_build: Read builder output. Check git log and diff. Does the
+      work match the plan for this phase? If the Builder opened a PR, read it. REDIRECT
+      if off-scope or missed key requirements.
+    max_iterations_gate_build: '3'
+fork_qa:
+  type: ForkNode
+  id: fork_qa
+  targets: health_checker,code_reviewer,adversarial_tester
+  edges_out:
+  - target: join_qa
+    condition: null
+health_checker:
+  type: AgentNode
+  id: health_checker
+  role: health_checker
+  blocking: 'true'
+  reads:
+  - .factory/reviews/builder-latest.md
+  - .factory/strategy/current.md
+  writes:
+  - .factory/reviews/health-check.md
+  edges_out: []
+  slots:
+    task_prompt_health_checker: 'Execute health_checker task for the project.
+
+      Read: .factory/reviews/builder-latest.md, .factory/strategy/current.md
+
+      Write output to: .factory/reviews/health-check.md'
+    timeout_health_checker: '600'
+code_reviewer:
+  type: AgentNode
+  id: code_reviewer
+  role: code_reviewer
+  blocking: 'true'
+  reads:
+  - .factory/reviews/builder-latest.md
+  - .factory/strategy/current.md
+  writes:
+  - .factory/reviews/code-review.md
+  edges_out: []
+  slots:
+    task_prompt_code_reviewer: 'Execute code_reviewer task for the project.
+
+      Read: .factory/reviews/builder-latest.md, .factory/strategy/current.md
+
+      Write output to: .factory/reviews/code-review.md'
+    timeout_code_reviewer: '900'
+adversarial_tester:
+  type: AgentNode
+  id: adversarial_tester
+  role: adversarial_tester
+  blocking: 'true'
+  reads:
+  - .factory/reviews/builder-latest.md
+  - .factory/strategy/current.md
+  writes:
+  - .factory/reviews/adversarial-qa.md
+  edges_out: []
+  slots:
+    task_prompt_adversarial_tester: 'Execute adversarial_tester task for the project.
+
+      Read: .factory/reviews/builder-latest.md, .factory/strategy/current.md
+
+      Write output to: .factory/reviews/adversarial-qa.md'
+    timeout_adversarial_tester: '1800'
+join_qa:
+  type: JoinNode
+  id: join_qa
+  sources: health_checker,code_reviewer,adversarial_tester
+  reads:
+  - .factory/reviews/adversarial-qa.md
+  - .factory/reviews/code-review.md
+  - .factory/reviews/health-check.md
+  writes: []
+  edges_out:
+  - target: gate_qa
+    condition: null
+gate_qa:
+  type: GateNode
+  id: gate_qa
+  evaluator_type: agent
+  evaluator_role: ceo
+  reads:
+  - .factory/reviews/adversarial-qa.md
+  - .factory/reviews/code-review.md
+  - .factory/reviews/health-check.md
+  edges_out:
+  - target: gate_doc_freshness
+    condition: PROCEED
+  - target: builder
+    condition: RELOOP
+  slots:
+    gate_prompt_gate_qa: Review QA results. PROCEED if all checks pass. RELOOP to
+      builder (max 3 iterations) if issues found.
+    max_iterations_gate_qa: '3'
+gate_doc_freshness:
+  type: GateNode
+  id: gate_doc_freshness
+  evaluator_type: agent
+  evaluator_role: ceo
+  reads:
+  - .factory/reviews/adversarial-qa.md
+  edges_out:
+  - target: gate_precheck
+    condition: PROCEED
+  - target: builder
+    condition: RELOOP
+  slots:
+    gate_prompt_gate_doc_freshness: Check the PR diff for documentation freshness.
+      If public APIs, CLI commands, configuration options, or architecture were changed
+      or added, corresponding documentation (README.md, CLAUDE.md, docstrings, --help
+      text, or doc/ files) MUST be updated. PROCEED if docs are current or no doc-worthy
+      changes exist. RELOOP to builder if documentation is stale — specify exactly
+      which changes need doc updates.
+    max_iterations_gate_doc_freshness: '3'
+gate_precheck:
+  type: GateNode
+  id: gate_precheck
+  evaluator_type: fn
+  evaluator_command: factory precheck {project_path} --score-before 0 --score-after
+    0
+  reads:
+  - .factory/reviews/adversarial-qa.md
+  edges_out:
+  - target: archivist_build
+    condition: PROCEED
+  - target: archivist_build
+    condition: HALT
+archivist_build:
+  type: AgentNode
+  id: archivist_build
+  role: archivist
+  blocking: 'false'
+  reads:
+  - .factory/reviews/adversarial-qa.md
+  writes:
+  - .factory/archive/build.md
+  edges_out:
+  - target: spec_generate
+    condition: null
+  slots:
+    task_prompt_archivist_build: 'Archive the build phase results.
+
+      Read: .factory/reviews/adversarial-qa.md
+
+      Write output to: .factory/archive/build.md'
+    timeout_archivist_build: '300'
+spec_generate:
+  type: FnNode
+  id: spec_generate
+  command: factory workflow run spec-generate {project_path}
+  reads: []
+  writes: []
+  edges_out: []

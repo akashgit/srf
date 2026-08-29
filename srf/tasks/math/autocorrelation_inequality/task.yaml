@@ -1,0 +1,12 @@
+name: autocorrelation_inequality
+category: math
+description: "Find tight bounds for autocorrelation inequalities. Given a sequence x of length n, find the tightest constant C such that sum(x[i]*x[i+k] for i) <= C * sum(x[i]^2 for i) for all k."
+initial_code: |
+  def solve(n: int) -> float:
+      """Return the tightest upper bound C for the autocorrelation inequality of sequences of length n."""
+      return 1.0  # Cauchy-Schwarz trivial bound
+eval_command: "python eval.py"
+metric: score
+maximize: true
+timeout: 30
+reference_score: 0.5

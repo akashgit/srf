@@ -1,0 +1,68 @@
+seed:
+  type: FnNode
+  id: seed
+  command: factory outer-loop calibrate {project_path}
+  reads: []
+  writes:
+  - .factory/outer_loop/config.json
+  - .factory/outer_loop/modes/
+  edges_out:
+  - target: evaluate
+    condition: null
+evaluate:
+  type: FnNode
+  id: evaluate
+  command: factory outer-loop evaluate {project_path} --generation {generation}
+  reads:
+  - .factory/outer_loop/modes/
+  writes:
+  - .factory/outer_loop/eval_cache.json
+  - .factory/outer_loop/results/
+  edges_out:
+  - target: reflect
+    condition: null
+reflect:
+  type: FnNode
+  id: reflect
+  command: factory outer-loop reflect {project_path} --generation {generation}
+  reads:
+  - .factory/outer_loop/results/
+  writes:
+  - .factory/outer_loop/reflections/
+  edges_out:
+  - target: evolve
+    condition: null
+evolve:
+  type: FnNode
+  id: evolve
+  command: factory outer-loop evolve {project_path} --generation {generation}
+  reads:
+  - .factory/outer_loop/modes/
+  - .factory/outer_loop/reflections/
+  writes:
+  - .factory/outer_loop/modes/
+  edges_out:
+  - target: gate_converge
+    condition: null
+gate_converge:
+  type: GateNode
+  id: gate_converge
+  evaluator_type: fn
+  evaluator_command: factory outer-loop status {project_path} --check-converge
+  reads:
+  - .factory/outer_loop/results/
+  edges_out:
+  - target: evaluate
+    condition: RELOOP
+  - target: promote
+    condition: PROCEED
+  slots:
+    max_iterations_gate_converge: '3'
+promote:
+  type: FnNode
+  id: promote
+  command: factory outer-loop status {project_path}
+  reads:
+  - .factory/outer_loop/results/
+  writes: []
+  edges_out: []

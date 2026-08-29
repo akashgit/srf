@@ -1,0 +1,26 @@
+{
+  "project_type": "unknown",
+  "dimensions": [
+    {
+      "name": "syntax_check",
+      "command": "true",
+      "weight": 0.8333333333333334,
+      "parser": "exit_code",
+      "regex_pattern": null,
+      "description": "Verify code has no syntax errors",
+      "source": "fallback"
+    },
+    {
+      "name": "observability",
+      "command": "(inline)",
+      "weight": 0.16666666666666669,
+      "parser": "json",
+      "regex_pattern": null,
+      "description": "Analyze logging coverage, structured logging, and request tracing",
+      "source": "researched"
+    }
+  ],
+  "tier": "fallback",
+  "confidence": 0.2,
+  "human_reviewed": false
+}
