@@ -1,18 +1,26 @@
-# Builder Review — README.md Rewrite
+# Builder Review — Documentation
+
+**Date:** 2026-08-30
+**Task:** Write comprehensive documentation for SRF
 
 ## Changes
 
-- Rewrote README.md to document all 13 implemented modes (was only covering GEPA)
-- Added Quick Start section with `uv pip install` and `srf` CLI entry point
-- Added full modes table with strategy description and use-case guidance for all 13 modes
-- Added CLI Reference covering all 6 subcommands: `run`, `modes`, `tasks`, `lab`, `evolve`, `validate`
-- Added Lab Director section with example command for comparing modes
-- Added MAP-Elites section with example command and flag table
-- Added task.yaml schema with `reference_score` field and `srf validate` workflow
-- Expanded architecture table to cover all layers (lab director, MAP-Elites, tracing, budget, hack detection, telemetry, memory)
-- Added Provider Setup table with install commands and required env vars
-- Removed "Planned Modes" section (all modes are now implemented)
+- Created `docs/USER_GUIDE.md` — complete user-facing documentation covering installation, quick start, all 6 CLI subcommands with flags and examples, all 13 modes organized by strategy family, task creation (task.yaml schema, eval.py contract, initial.py), provider setup for all 4 providers, environment variables reference, output format and files, sandbox backends, and hack detection
+- Created `docs/DEVELOPER_GUIDE.md` — complete developer documentation covering step-by-step mode creation (with code examples from existing modes), mode registration auto-discovery, all 13 DAG primitives with signatures and usage examples, FnNode callable_name wiring, OptKnobs system, MemoryDeclarations, shared ops in ops/common/, task and eval creation, adding LLM providers, adding sandbox backends, hack detection internals, telemetry integration, Lab Director protocol and multi-mode orchestration, MAP-Elites grid structure and evolution loop, and testing
 
-## Status
+## Evidence Sources
 
-Complete. README covers all features, is concise (~160 lines), and can be read in under 5 minutes.
+All content backed by three evidence files:
+- `.factory/strategy/doc-evidence-modes.md` — mode template, registration, DAG primitives, knobs, memory
+- `.factory/strategy/doc-evidence-infra.md` — tasks, eval, sandbox, providers, telemetry, hack detection, Lab Director, MAP-Elites
+- `.factory/strategy/doc-evidence-cli.md` — CLI entry point, subcommands, flags, env vars, output format
+
+## Verification
+
+- All file paths verified against filesystem (srf/modes/, srf/ops/, srf/tasks/, srf/lab/, srf/telemetry/)
+- All 13 mode files confirmed present
+- All task directories confirmed present
+- Uses `uv` everywhere (never `pip`)
+- Every code snippet sourced from evidence files with line numbers
+- Every function signature matches evidence
+- No invented features or APIs
