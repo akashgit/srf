@@ -43,6 +43,7 @@ def run_eval(ctx: Any) -> None:
 
     eval_command = task_config.get("eval_command", "python eval.py")
     timeout = task_config.get("timeout", 30)
+    sandbox_backend = ctx.knobs.get("sandbox_backend", "auto") if hasattr(ctx, "knobs") else "auto"
 
     task_dir_str = task_config.get("_dir")
     if task_dir_str:
@@ -60,7 +61,7 @@ def run_eval(ctx: Any) -> None:
         if task_dir and (task_dir / "initial.py").exists():
             shutil.copy2(task_dir / "initial.py", tmp / "initial.py")
 
-        result = _execute_in_sandbox(tmp, eval_command, timeout)
+        result = _execute_in_sandbox(tmp, eval_command, timeout, backend=sandbox_backend)
 
     ctx.write_json("eval_result.json", _result_to_dict(result))
     logger.info(
@@ -82,9 +83,22 @@ def _find_task_dir(category: str, name: str) -> Path | None:
     return None
 
 
-def _execute_in_sandbox(tmp: Path, eval_command: str, timeout: int) -> EvalResult:
-    if _has_firejail():
+def _has_gvisor() -> bool:
+    return shutil.which("runsc") is not None
+
+
+def _execute_in_sandbox(tmp: Path, eval_command: str, timeout: int,
+                        backend: str = "auto") -> EvalResult:
+    if backend == "auto":
+        if _has_firejail():
+            return _run_firejail(tmp, eval_command, timeout)
+        return _run_subprocess(tmp, eval_command, timeout)
+    elif backend == "gvisor":
+        return _run_gvisor(tmp, eval_command, timeout)
+    elif backend == "firejail":
         return _run_firejail(tmp, eval_command, timeout)
+    elif backend == "none":
+        return _run_subprocess(tmp, eval_command, timeout)
     return _run_subprocess(tmp, eval_command, timeout)
 
 
@@ -102,6 +116,21 @@ def _run_firejail(tmp: Path, eval_command: str, timeout: int) -> EvalResult:
         sys.executable,
     ] + eval_command.split()[1:]
 
+    return _run_process(cmd, tmp, timeout)
+
+
+def _run_gvisor(tmp: Path, eval_command: str, timeout: int) -> EvalResult:
+    if not _has_gvisor():
+        logger.warning("sandbox.gvisor_not_found", fallback="subprocess")
+        return _run_subprocess(tmp, eval_command, timeout)
+
+    cmd = [
+        "runsc", "do",
+        "--network=none",
+        "--rootless",
+        "--",
+        sys.executable,
+    ] + eval_command.split()[1:]
     return _run_process(cmd, tmp, timeout)
 
 
