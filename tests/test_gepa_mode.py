@@ -11,6 +11,7 @@ from srf._factory_shim import (
     Package,
     Sequential,
 )
+from tests.conftest import collect_nodes
 from srf.modes.gepa import (
     build_gepa_knobs,
     build_gepa_memory,
@@ -58,7 +59,7 @@ def test_conditional_branches():
 
 def test_fn_node_callables_resolve():
     wf = build_gepa_workflow()
-    fn_nodes = _collect_nodes(wf.root, FnNode)
+    fn_nodes = collect_nodes(wf.root, FnNode)
     for fn in fn_nodes:
         module_path, func_name = fn.callable_name.split(":")
         module = importlib.import_module(module_path)
@@ -67,7 +68,7 @@ def test_fn_node_callables_resolve():
 
 def test_llm_nodes_have_system_prompts():
     wf = build_gepa_workflow()
-    llm_nodes = _collect_nodes(wf.root, LLMNode)
+    llm_nodes = collect_nodes(wf.root, LLMNode)
     assert len(llm_nodes) == 2
     for llm in llm_nodes:
         assert llm.system_prompt, f"LLMNode {llm.name} missing system_prompt"
@@ -126,19 +127,3 @@ def test_gate_nodes():
     assert "check" in budget_gate.evaluator_command
 
 
-def _collect_nodes(node, node_type):
-    found = []
-    if isinstance(node, node_type):
-        found.append(node)
-    if isinstance(node, Loop):
-        found.extend(_collect_nodes(node.body, node_type))
-    elif isinstance(node, Sequential):
-        for child in node.children:
-            found.extend(_collect_nodes(child, node_type))
-    elif isinstance(node, Conditional):
-        for branch in node.branches.values():
-            found.extend(_collect_nodes(branch, node_type))
-    elif isinstance(node, Package):
-        for n in node.nodes:
-            found.extend(_collect_nodes(n, node_type))
-    return found

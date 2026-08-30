@@ -21,9 +21,7 @@ from srf._factory_shim import (
     MemoryDeclaration,
     OptKnob,
     Package,
-    Port,
     Sequential,
-    StateContract,
     Workflow,
 )
 

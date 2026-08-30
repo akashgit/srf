@@ -130,24 +130,10 @@ def _init_mode_state(mode: str, ctx: ExecutionContext) -> None:
         ctx.write_text("best_solution.py", initial_code)
 
 
-_STATE_FILES = {
-    "best_of_n": "best_of_n_result.json",
-    "scs": "scs_state.json",
-    "aide": "aide_state.json",
-    "ai_sci_v1": "autoresearch_state.json",
-    "ai_sci_v2": "aide_state.json",
-    "openevolve": "openevolve_state.json",
-    "shinka": "shinka_state.json",
-    "adaevolve": "adaevolve_state.json",
-    "evox": "evox_state.json",
-    "autoresearch": "autoresearch_state.json",
-    "karpathy": "karpathy_state.json",
-    "autoscientists": "autoscientists_state.json",
-}
-
-
 def _get_best_score(ctx: ExecutionContext, mode: str) -> float:
-    state_file = _STATE_FILES.get(mode, "gepa_state.json")
+    from srf.ops.common.state_files import STATE_FILES
+
+    state_file = STATE_FILES.get(mode, "gepa_state.json")
     state = ctx.read_json(state_file)
     if state and "best_score" in state:
         return state["best_score"]

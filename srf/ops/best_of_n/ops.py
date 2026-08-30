@@ -37,5 +37,6 @@ def select_best_candidate(ctx: Any) -> None:
 
     if best_code:
         ctx.write_text("best_solution.py", best_code)
-    ctx.write_json("best_of_n_result.json", {"best_score": best_score, "n": n})
+    safe_score = best_score if best_score != -float("inf") else 0.0
+    ctx.write_json("best_of_n_result.json", {"best_score": safe_score, "n": n})
     logger.info("best_of_n.selected", best_score=best_score)
