@@ -3,6 +3,7 @@
 import importlib
 
 from srf._factory_shim import FnNode, LLMNode, Package, Parallel, Sequential
+from tests.conftest import collect_nodes
 from srf.modes.best_of_n import (
     build_best_of_n_knobs,
     build_best_of_n_memory,
@@ -50,7 +51,7 @@ def test_memory_declarations():
 
 def test_fn_nodes_resolve():
     wf = build_best_of_n_workflow()
-    fn_nodes = _collect_nodes(wf.root, FnNode)
+    fn_nodes = collect_nodes(wf.root, FnNode)
     for fn in fn_nodes:
         module_path, func_name = fn.callable_name.split(":")
         module = importlib.import_module(module_path)
@@ -59,7 +60,7 @@ def test_fn_nodes_resolve():
 
 def test_llm_nodes():
     wf = build_best_of_n_workflow()
-    llm_nodes = _collect_nodes(wf.root, LLMNode)
+    llm_nodes = collect_nodes(wf.root, LLMNode)
     assert len(llm_nodes) == 5
     for llm in llm_nodes:
         assert llm.system_prompt
@@ -75,19 +76,3 @@ def test_registry_discovers():
     assert wf.name == "best_of_n"
 
 
-def _collect_nodes(node, node_type):
-    found = []
-    if isinstance(node, node_type):
-        found.append(node)
-    if hasattr(node, "children"):
-        for child in node.children:
-            found.extend(_collect_nodes(child, node_type))
-    if hasattr(node, "nodes"):
-        for n in node.nodes:
-            found.extend(_collect_nodes(n, node_type))
-    if hasattr(node, "body") and node.body:
-        found.extend(_collect_nodes(node.body, node_type))
-    if hasattr(node, "branches"):
-        for branch in node.branches.values():
-            found.extend(_collect_nodes(branch, node_type))
-    return found

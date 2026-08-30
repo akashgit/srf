@@ -3,6 +3,7 @@
 import importlib
 
 from srf._factory_shim import AgentNode, FnNode, LLMNode, Loop, Package, Parallel, Sequential
+from tests.conftest import collect_nodes
 
 
 class TestAutoResearch:
@@ -24,7 +25,7 @@ class TestAutoResearch:
     def test_fn_nodes_resolve(self):
         from srf.modes.autoresearch import build_autoresearch_workflow
         wf = build_autoresearch_workflow()
-        for fn in _collect_nodes(wf.root, FnNode):
+        for fn in collect_nodes(wf.root, FnNode):
             module_path, func_name = fn.callable_name.split(":")
             module = importlib.import_module(module_path)
             assert hasattr(module, func_name)
@@ -46,7 +47,7 @@ class TestKarpathy:
     def test_has_agent_node(self):
         from srf.modes.karpathy import build_karpathy_workflow
         wf = build_karpathy_workflow()
-        agents = _collect_nodes(wf.root, AgentNode)
+        agents = collect_nodes(wf.root, AgentNode)
         assert len(agents) == 1
         assert agents[0].model == "sonnet"
         assert agents[0].max_turns == 10
@@ -62,7 +63,7 @@ class TestKarpathy:
     def test_fn_nodes_resolve(self):
         from srf.modes.karpathy import build_karpathy_workflow
         wf = build_karpathy_workflow()
-        for fn in _collect_nodes(wf.root, FnNode):
+        for fn in collect_nodes(wf.root, FnNode):
             module_path, func_name = fn.callable_name.split(":")
             module = importlib.import_module(module_path)
             assert hasattr(module, func_name)
@@ -101,7 +102,7 @@ class TestAutoScientists:
     def test_fn_nodes_resolve(self):
         from srf.modes.autoscientists import build_autoscientists_workflow
         wf = build_autoscientists_workflow()
-        for fn in _collect_nodes(wf.root, FnNode):
+        for fn in collect_nodes(wf.root, FnNode):
             module_path, func_name = fn.callable_name.split(":")
             module = importlib.import_module(module_path)
             assert hasattr(module, func_name)
@@ -129,7 +130,7 @@ class TestAISciV1:
     def test_four_stages(self):
         from srf.modes.ai_sci_v1 import build_ai_sci_v1_workflow
         wf = build_ai_sci_v1_workflow()
-        llm_nodes = _collect_nodes(wf.root, LLMNode)
+        llm_nodes = collect_nodes(wf.root, LLMNode)
         # ideation_llm, exp_llm (inside loop), writeup_llm, review_llm
         assert len(llm_nodes) == 4
 
@@ -142,7 +143,7 @@ class TestAISciV1:
     def test_fn_nodes_resolve(self):
         from srf.modes.ai_sci_v1 import build_ai_sci_v1_workflow
         wf = build_ai_sci_v1_workflow()
-        for fn in _collect_nodes(wf.root, FnNode):
+        for fn in collect_nodes(wf.root, FnNode):
             module_path, func_name = fn.callable_name.split(":")
             module = importlib.import_module(module_path)
             assert hasattr(module, func_name)
@@ -160,19 +161,3 @@ class TestAgentNode:
         assert node.max_turns == 5
 
 
-def _collect_nodes(node, node_type):
-    found = []
-    if isinstance(node, node_type):
-        found.append(node)
-    if hasattr(node, "children"):
-        for child in node.children:
-            found.extend(_collect_nodes(child, node_type))
-    if hasattr(node, "nodes"):
-        for n in node.nodes:
-            found.extend(_collect_nodes(n, node_type))
-    if hasattr(node, "body") and node.body:
-        found.extend(_collect_nodes(node.body, node_type))
-    if hasattr(node, "branches"):
-        for branch in node.branches.values():
-            found.extend(_collect_nodes(branch, node_type))
-    return found

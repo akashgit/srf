@@ -5,6 +5,7 @@ import importlib
 from srf._factory_shim import Conditional, FnNode, GateNode, LLMNode, Loop, Package, Sequential
 from srf.ops.common.migration import ring_migrate, should_migrate
 from srf.ops.common.reflection import analyze_stagnation, build_reflection_prompt
+from tests.conftest import collect_nodes
 
 
 class TestOpenEvolve:
@@ -100,7 +101,7 @@ class TestAdaEvolve:
     def test_fn_nodes_resolve(self):
         from srf.modes.adaevolve import build_adaevolve_workflow
         wf = build_adaevolve_workflow()
-        fn_nodes = _collect_fn_nodes(wf.root)
+        fn_nodes = collect_nodes(wf.root, FnNode)
         for fn in fn_nodes:
             module_path, func_name = fn.callable_name.split(":")
             module = importlib.import_module(module_path)
@@ -185,19 +186,3 @@ class TestReflection:
         assert result["reason"] == "insufficient_history"
 
 
-def _collect_fn_nodes(node):
-    found = []
-    if isinstance(node, FnNode):
-        found.append(node)
-    if isinstance(node, Loop) and node.body:
-        found.extend(_collect_fn_nodes(node.body))
-    elif isinstance(node, Sequential):
-        for child in node.children:
-            found.extend(_collect_fn_nodes(child))
-    elif isinstance(node, Conditional):
-        for branch in node.branches.values():
-            found.extend(_collect_fn_nodes(branch))
-    elif isinstance(node, Package):
-        for n in node.nodes:
-            found.extend(_collect_fn_nodes(n))
-    return found
