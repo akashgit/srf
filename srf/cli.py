@@ -81,6 +81,21 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
 
+def _auto_create_llm_client():
+    from srf._factory_shim import HttpxLLMClient, OpenAILLMClient, VertexAILLMClient
+
+    if os.environ.get("OPENAI_API_KEY"):
+        return OpenAILLMClient()
+    if os.environ.get("ANTHROPIC_VERTEX_PROJECT_ID"):
+        return VertexAILLMClient()
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return HttpxLLMClient()
+    raise ValueError(
+        "No LLM API key found. Set OPENAI_API_KEY, ANTHROPIC_VERTEX_PROJECT_ID, "
+        "or ANTHROPIC_API_KEY, or use --mock-llm."
+    )
+
+
 def _resolve_provider(args: argparse.Namespace) -> str:
     if args.mock_llm:
         return "mock"
@@ -255,7 +270,7 @@ def _cmd_lab(args: argparse.Namespace) -> int:
 
     configure_logging()
     modes = [m.strip() for m in args.modes.split(",")]
-    llm_client = MockLLMClient() if args.mock_llm else MockLLMClient()
+    llm_client = MockLLMClient() if args.mock_llm else _auto_create_llm_client()
     director = LabDirector(llm_client=llm_client)
     report = director.run_lab(args.task, modes, args.budget)
     print(json.dumps(report, indent=2, default=str))
@@ -277,7 +292,7 @@ def _cmd_evolve(args: argparse.Namespace) -> int:
     }
 
     loop = MAPElitesLoop(modes, knob_specs)
-    llm_client = MockLLMClient() if args.mock_llm else MockLLMClient()
+    llm_client = MockLLMClient() if args.mock_llm else _auto_create_llm_client()
     director = LabDirector(llm_client=llm_client)
 
     per_gen_budget = args.budget // args.generations if args.generations > 0 else args.budget
