@@ -43,6 +43,18 @@ def main(argv: list[str] | None = None) -> int:
     tasks_parser = subparsers.add_parser("tasks", help="List available tasks")
     tasks_parser.add_argument("--category", default=None, help="Filter by category")
 
+    lab_parser = subparsers.add_parser("lab", help="Run multiple modes on a task")
+    lab_parser.add_argument("--task", required=True, help="Task name")
+    lab_parser.add_argument("--modes", required=True, help="Comma-separated mode names")
+    lab_parser.add_argument("--budget", type=int, default=150, help="Total budget across all modes")
+    lab_parser.add_argument("--mock-llm", action="store_true", help="Use mock LLM")
+
+    evolve_parser = subparsers.add_parser("evolve", help="Run MAP-Elites outer loop")
+    evolve_parser.add_argument("--task", required=True, help="Task name")
+    evolve_parser.add_argument("--generations", type=int, default=10, help="Number of generations")
+    evolve_parser.add_argument("--budget", type=int, default=1000, help="Total budget")
+    evolve_parser.add_argument("--mock-llm", action="store_true", help="Use mock LLM")
+
     validate_parser = subparsers.add_parser("validate", help="Validate trace fidelity")
     validate_parser.add_argument("--mode", required=True)
     validate_parser.add_argument("--task", required=True)
@@ -58,6 +70,10 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_modes()
     elif args.command == "tasks":
         return _cmd_tasks(args)
+    elif args.command == "lab":
+        return _cmd_lab(args)
+    elif args.command == "evolve":
+        return _cmd_evolve(args)
     elif args.command == "validate":
         return _cmd_validate(args)
     else:
@@ -230,6 +246,53 @@ def _cmd_tasks(args: argparse.Namespace) -> int:
     print("Available tasks:")
     for task in tasks:
         print(f"  - {task['name']} [{task.get('category', '?')}]: {task.get('description', '')[:80]}")
+    return 0
+
+
+def _cmd_lab(args: argparse.Namespace) -> int:
+    from srf._factory_shim import MockLLMClient
+    from srf.lab.director import LabDirector
+
+    configure_logging()
+    modes = [m.strip() for m in args.modes.split(",")]
+    llm_client = MockLLMClient() if args.mock_llm else MockLLMClient()
+    director = LabDirector(llm_client=llm_client)
+    report = director.run_lab(args.task, modes, args.budget)
+    print(json.dumps(report, indent=2, default=str))
+    return 0
+
+
+def _cmd_evolve(args: argparse.Namespace) -> int:
+    from srf._factory_shim import MockLLMClient
+    from srf.lab.director import LabDirector
+    from srf.lab.map_elites import MAPElitesLoop
+    from srf.registry import get_mode_registry, get_task_registry
+
+    configure_logging()
+    registry = get_mode_registry()
+    modes = registry.list_modes()
+    knob_specs = {
+        "temperature": [0.3, 0.5, 0.7, 0.9, 1.0],
+        "parent_selection": ["best", "epsilon_greedy", "power_law", "uniform"],
+    }
+
+    loop = MAPElitesLoop(modes, knob_specs)
+    llm_client = MockLLMClient() if args.mock_llm else MockLLMClient()
+    director = LabDirector(llm_client=llm_client)
+
+    per_gen_budget = args.budget // args.generations if args.generations > 0 else args.budget
+
+    for gen in range(args.generations):
+        mode, knobs = loop.suggest()
+        task_config = get_task_registry().get(args.task)
+        if task_config is None:
+            print(f"Error: unknown task '{args.task}'", file=sys.stderr)
+            return 1
+        result = director.run_mode(mode, task_config, per_gen_budget)
+        loop.report(mode, knobs, result.score, per_gen_budget)
+
+    report = loop.get_results()
+    print(json.dumps(report, indent=2, default=str))
     return 0
 
 
