@@ -7,7 +7,6 @@ from typing import Any
 
 import structlog
 
-from srf.ops.common.budget import record_eval
 from srf.ops.common.hack_detect import check_candidate
 from srf.ops.common.tracing import log_candidate, log_evaluation
 from srf.ops.gepa.state import load_state, save_state
@@ -41,8 +40,6 @@ def accept_or_reject(ctx: Any) -> None:
     source = state.last_action
 
     child_id = hashlib.sha256(candidate_code.encode()).hexdigest()[:12]
-
-    record_eval(ctx)
 
     log_evaluation(ctx, child_id, child_score, child_metrics)
     log_candidate(ctx, child_id, parent_id, source, hashlib.sha256(candidate_code.encode()).hexdigest()[:16])
