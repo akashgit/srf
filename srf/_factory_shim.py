@@ -457,30 +457,9 @@ class WorkflowExecutor:
         return None
 
     def _execute_agent(self, agent: AgentNode) -> str | None:
-        self.log.info("agent.execute", name=agent.name, model=agent.model, max_turns=agent.max_turns)
-        prompt_parts = []
-        for f in agent.reads:
-            content = self.ctx.read_text(f)
-            if content:
-                prompt_parts.append(content)
-        user_prompt = "\n\n".join(prompt_parts)
+        from srf.agent_executor import execute_agent
 
-        response = self.ctx.llm_client.generate(
-            system_prompt=agent.system_prompt,
-            user_prompt=user_prompt,
-            model=agent.model,
-            temperature=0.7,
-        )
-
-        code = extract_code_block(response.content)
-        for f in agent.writes:
-            self.ctx.write_text(f, code)
-
-        from srf.ops.common.budget import record_llm_call
-        from srf.ops.common.tracing import log_llm_call
-        record_llm_call(self.ctx, response.input_tokens, response.output_tokens)
-        log_llm_call(self.ctx, agent.name, agent.model, response.input_tokens, response.output_tokens)
-        return None
+        return execute_agent(self.ctx, agent, self.log)
 
     def _execute_gate(self, gate: GateNode) -> str:
         self.log.debug("gate.execute", name=gate.name, command=gate.evaluator_command)

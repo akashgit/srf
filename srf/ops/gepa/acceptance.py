@@ -8,6 +8,7 @@ from typing import Any
 import structlog
 
 from srf.ops.common.budget import record_eval
+from srf.ops.common.hack_detect import check_candidate
 from srf.ops.common.tracing import log_candidate, log_evaluation
 from srf.ops.gepa.state import load_state, save_state
 
@@ -53,6 +54,16 @@ def accept_or_reject(ctx: Any) -> None:
         _reject(
             ctx, state, rejections, child_id, child_score, parent_score,
             candidate_code, child_error, child_metrics,
+        )
+        save_state(ctx, state)
+        ctx.write_json("rejection_history.json", rejections)
+        return
+
+    is_clean, hack_signals = check_candidate(candidate_code)
+    if not is_clean:
+        _reject(
+            ctx, state, rejections, child_id, child_score, parent_score,
+            candidate_code, "hack_detected", child_metrics,
         )
         save_state(ctx, state)
         ctx.write_json("rejection_history.json", rejections)
