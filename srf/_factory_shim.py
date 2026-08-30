@@ -380,10 +380,26 @@ class WorkflowExecutor:
         branch = cond.branches.get(result)
         if branch:
             self.log.info("conditional.branch", name=cond.name, decision=result)
+            self._propagate_branch_state(branch)
             self.execute(branch)
         else:
             self.log.warning("conditional.no_branch", name=cond.name, decision=result)
         return result
+
+    def _propagate_branch_state(self, node: Any) -> None:
+        if isinstance(node, Package):
+            for knob in node.knobs:
+                self.ctx.knobs.setdefault(knob.name, knob.default)
+        if isinstance(node, (Package, Sequential)):
+            children = node.nodes if isinstance(node, Package) else node.children
+            for child in children:
+                self._propagate_branch_state(child)
+        elif isinstance(node, Conditional):
+            for branch in node.branches.values():
+                self._propagate_branch_state(branch)
+        elif isinstance(node, Loop):
+            if node.body:
+                self._propagate_branch_state(node.body)
 
     def _execute_package(self, pkg: Package) -> str | None:
         self.log.debug("package.start", name=pkg.name)

@@ -7,6 +7,8 @@ from typing import Any
 
 import structlog
 
+from srf.tasks.schema import TaskDefinition
+
 logger = structlog.get_logger()
 
 try:
@@ -89,7 +91,26 @@ class TaskRegistry:
                 logger.warning("task.load_error", name=name, error=str(e))
 
     def get(self, name: str) -> dict[str, Any] | None:
+        """Return validated task config as dict (backward compatible)."""
+        raw = self._tasks.get(name)
+        if raw is None:
+            return None
+        try:
+            td = TaskDefinition(**{k: v for k, v in raw.items() if k != "_dir"})
+            result = td.model_dump()
+            result["_dir"] = raw.get("_dir", "")
+            return result
+        except Exception:
+            return raw
+
+    def get_raw(self, name: str) -> dict[str, Any] | None:
         return self._tasks.get(name)
+
+    def get_validated(self, name: str) -> TaskDefinition | None:
+        raw = self._tasks.get(name)
+        if raw is None:
+            return None
+        return TaskDefinition(**{k: v for k, v in raw.items() if k != "_dir"})
 
     def list_all(self) -> list[dict[str, Any]]:
         return list(self._tasks.values())
