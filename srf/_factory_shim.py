@@ -124,6 +124,16 @@ class Loop:
 
 
 @dataclass
+class AgentNode:
+    name: str
+    model: str
+    system_prompt: str
+    max_turns: int = 10
+    reads: set[str] = field(default_factory=set)
+    writes: set[str] = field(default_factory=set)
+
+
+@dataclass
 class Workflow:
     name: str
     root: Any = None
@@ -344,6 +354,8 @@ class WorkflowExecutor:
             return self._execute_fn(node)
         elif isinstance(node, LLMNode):
             return self._execute_llm(node)
+        elif isinstance(node, AgentNode):
+            return self._execute_agent(node)
         elif isinstance(node, GateNode):
             return self._execute_gate(node)
         return None
@@ -442,6 +454,32 @@ class WorkflowExecutor:
 
         record_llm_call(self.ctx, response.input_tokens, response.output_tokens)
         log_llm_call(self.ctx, llm.name, llm.model, response.input_tokens, response.output_tokens)
+        return None
+
+    def _execute_agent(self, agent: AgentNode) -> str | None:
+        self.log.info("agent.execute", name=agent.name, model=agent.model, max_turns=agent.max_turns)
+        prompt_parts = []
+        for f in agent.reads:
+            content = self.ctx.read_text(f)
+            if content:
+                prompt_parts.append(content)
+        user_prompt = "\n\n".join(prompt_parts)
+
+        response = self.ctx.llm_client.generate(
+            system_prompt=agent.system_prompt,
+            user_prompt=user_prompt,
+            model=agent.model,
+            temperature=0.7,
+        )
+
+        code = extract_code_block(response.content)
+        for f in agent.writes:
+            self.ctx.write_text(f, code)
+
+        from srf.ops.common.budget import record_llm_call
+        from srf.ops.common.tracing import log_llm_call
+        record_llm_call(self.ctx, response.input_tokens, response.output_tokens)
+        log_llm_call(self.ctx, agent.name, agent.model, response.input_tokens, response.output_tokens)
         return None
 
     def _execute_gate(self, gate: GateNode) -> str:
