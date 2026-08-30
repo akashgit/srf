@@ -191,8 +191,11 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
     init_trace_dir(output_dir)
     init_budget(ctx)
-    init_state(ctx)
-    init_population(ctx)
+
+    modes_with_gepa_state = {"gepa", "scs", "aide", "ai_sci_v2", "openevolve", "shinka", "adaevolve", "evox", "autoresearch", "karpathy", "autoscientists", "ai_sci_v1"}
+    if args.mode in modes_with_gepa_state:
+        init_state(ctx)
+        init_population(ctx)
 
     log.info(
         "run.start",
@@ -208,13 +211,24 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
     budget_state = ctx.read_json("budget_state.json") or {}
     eval_count = budget_state.get("eval_count", 0)
-    state = (
-        ctx.read_json("gepa_state.json")
-        or ctx.read_json("scs_state.json")
-        or ctx.read_json("best_of_n_result.json")
-        or {}
-    )
-    best_score = state.get("best_score", state.get("best_score", 0.0))
+
+    _STATE_FILES = {
+        "best_of_n": "best_of_n_result.json",
+        "scs": "scs_state.json",
+        "aide": "aide_state.json",
+        "ai_sci_v1": "autoresearch_state.json",
+        "ai_sci_v2": "aide_state.json",
+        "openevolve": "openevolve_state.json",
+        "shinka": "shinka_state.json",
+        "adaevolve": "adaevolve_state.json",
+        "evox": "evox_state.json",
+        "autoresearch": "autoresearch_state.json",
+        "karpathy": "karpathy_state.json",
+        "autoscientists": "autoscientists_state.json",
+    }
+    state_file = _STATE_FILES.get(args.mode, "gepa_state.json")
+    state = ctx.read_json(state_file) or {}
+    best_score = state.get("best_score", 0.0)
 
     log.info("run.complete", best_score=best_score, eval_count=eval_count)
     print(json.dumps({

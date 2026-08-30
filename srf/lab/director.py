@@ -130,12 +130,25 @@ def _init_mode_state(mode: str, ctx: ExecutionContext) -> None:
         ctx.write_text("best_solution.py", initial_code)
 
 
+_STATE_FILES = {
+    "best_of_n": "best_of_n_result.json",
+    "scs": "scs_state.json",
+    "aide": "aide_state.json",
+    "ai_sci_v1": "autoresearch_state.json",
+    "ai_sci_v2": "aide_state.json",
+    "openevolve": "openevolve_state.json",
+    "shinka": "shinka_state.json",
+    "adaevolve": "adaevolve_state.json",
+    "evox": "evox_state.json",
+    "autoresearch": "autoresearch_state.json",
+    "karpathy": "karpathy_state.json",
+    "autoscientists": "autoscientists_state.json",
+}
+
+
 def _get_best_score(ctx: ExecutionContext, mode: str) -> float:
-    for state_file in [f"{mode}_state.json", "gepa_state.json", "aide_state.json",
-                       "scs_state.json", "openevolve_state.json", "shinka_state.json",
-                       "adaevolve_state.json", "evox_state.json", "karpathy_state.json",
-                       "autoresearch_state.json", "autoscientists_state.json"]:
-        state = ctx.read_json(state_file)
-        if state and "best_score" in state:
-            return state["best_score"]
+    state_file = _STATE_FILES.get(mode, "gepa_state.json")
+    state = ctx.read_json(state_file)
+    if state and "best_score" in state:
+        return state["best_score"]
     return 0.0
