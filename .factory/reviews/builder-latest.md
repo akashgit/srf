@@ -1,14 +1,18 @@
-# Builder Agent Output
+# Builder Review — README.md Rewrite
 
-- **timestamp:** 2026-08-29T20:24:40Z
-- **exit_code:** 0
+## Changes
 
----
+- Rewrote README.md to document all 13 implemented modes (was only covering GEPA)
+- Added Quick Start section with `uv pip install` and `srf` CLI entry point
+- Added full modes table with strategy description and use-case guidance for all 13 modes
+- Added CLI Reference covering all 6 subcommands: `run`, `modes`, `tasks`, `lab`, `evolve`, `validate`
+- Added Lab Director section with example command for comparing modes
+- Added MAP-Elites section with example command and flag table
+- Added task.yaml schema with `reference_score` field and `srf validate` workflow
+- Expanded architecture table to cover all layers (lab director, MAP-Elites, tracing, budget, hack detection, telemetry, memory)
+- Added Provider Setup table with install commands and required env vars
+- Removed "Planned Modes" section (all modes are now implemented)
 
-Done. `README.md` written at the project root (131 lines) covering all 10 sections. Builder review written to `.factory/reviews/builder-latest.md`.
----
+## Status
 
-> **⚠ CEO IDENTITY RE-ANCHOR (Sacred Rule 8)**
-> You are the Factory CEO. You orchestrate, delegate, and decide. You do NOT implement.
-> If you are about to write code, run tests, do research, or fix bugs — STOP and spawn the appropriate agent.
-> Re-read your Permitted/Forbidden Actions lists in the Identity section above.
+Complete. README covers all features, is concise (~160 lines), and can be read in under 5 minutes.
