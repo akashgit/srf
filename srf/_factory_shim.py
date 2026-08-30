@@ -183,7 +183,7 @@ class HttpxLLMClient:
             },
             json={
                 "model": model_id,
-                "max_tokens": 4096,
+                "max_tokens": 8192,
                 "system": system_prompt,
                 "messages": [{"role": "user", "content": user_prompt}],
                 "temperature": temperature,
@@ -233,7 +233,7 @@ class OpenAILLMClient:
                 "model": model_id,
                 "messages": messages,
                 "temperature": temperature,
-                "max_tokens": 4096,
+                "max_tokens": 8192,
             },
             timeout=120.0,
         )
@@ -274,10 +274,10 @@ class VertexAILLMClient:
         model_id = self.MODEL_MAP.get(model, model)
         msg = self.client.messages.create(
             model=model_id,
-            max_tokens=4096,
+            max_tokens=8192,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
-            temperature=temperature,
+            extra_body={"temperature": temperature},
         )
         content = msg.content[0].text
         return LLMResponse(
@@ -421,6 +421,8 @@ class WorkflowExecutor:
 
     def _execute_fn(self, fn: FnNode) -> str | None:
         self.log.info("fn.execute", name=fn.name, callable=fn.callable_name)
+        self.ctx._current_node_reads = fn.reads
+        self.ctx._current_node_writes = fn.writes
         module_path, func_name = fn.callable_name.split(":")
         module = importlib.import_module(module_path)
         func = getattr(module, func_name)

@@ -31,14 +31,34 @@ def _has_firejail() -> bool:
 
 
 def run_eval(ctx: Any) -> None:
-    """Execute eval.py on candidate.py in a sandbox, write eval_result.json."""
+    """Execute eval.py on candidate in a sandbox, write eval result.
+
+    Filenames are derived from the FnNode's reads/writes when available
+    (set by the executor as ctx._current_node_reads/_current_node_writes),
+    falling back to candidate.py / eval_result.json.
+    """
     work_dir: Path = ctx.work_dir
-    candidate_path = work_dir / "candidate.py"
     task_config = ctx.task
 
+    reads = getattr(ctx, "_current_node_reads", set())
+    candidate_name = "candidate.py"
+    for f in sorted(reads):
+        if f.endswith(".py") and f not in ("eval.py", "initial.py"):
+            candidate_name = f
+            break
+
+    writes = getattr(ctx, "_current_node_writes", set())
+    result_name = "eval_result.json"
+    for f in sorted(writes):
+        if f.endswith(".json"):
+            result_name = f
+            break
+
+    candidate_path = work_dir / candidate_name
+
     if not candidate_path.exists():
-        result = EvalResult(error="candidate.py not found")
-        ctx.write_json("eval_result.json", _result_to_dict(result))
+        result = EvalResult(error=f"{candidate_name} not found")
+        ctx.write_json(result_name, _result_to_dict(result))
         return
 
     eval_command = task_config.get("eval_command", "python eval.py")
@@ -63,12 +83,18 @@ def run_eval(ctx: Any) -> None:
 
         result = _execute_in_sandbox(tmp, eval_command, timeout, backend=sandbox_backend)
 
-    ctx.write_json("eval_result.json", _result_to_dict(result))
+    ctx.write_json(result_name, _result_to_dict(result))
+
+    from srf.ops.common.budget import record_eval
+    record_eval(ctx)
+
     logger.info(
         "sandbox.eval_complete",
         score=result.score,
         error=result.error,
         iteration=ctx.iteration,
+        candidate=candidate_name,
+        result_file=result_name,
     )
 
 

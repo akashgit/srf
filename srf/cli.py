@@ -206,9 +206,15 @@ def _cmd_run(args: argparse.Namespace) -> int:
     executor = WorkflowExecutor(ctx)
     executor.execute(workflow.root)
 
-    state = ctx.read_json("gepa_state.json") or {}
-    best_score = state.get("best_score", 0.0)
-    eval_count = state.get("eval_count", 0)
+    budget_state = ctx.read_json("budget_state.json") or {}
+    eval_count = budget_state.get("eval_count", 0)
+    state = (
+        ctx.read_json("gepa_state.json")
+        or ctx.read_json("scs_state.json")
+        or ctx.read_json("best_of_n_result.json")
+        or {}
+    )
+    best_score = state.get("best_score", state.get("best_score", 0.0))
 
     log.info("run.complete", best_score=best_score, eval_count=eval_count)
     print(json.dumps({
