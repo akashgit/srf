@@ -1,0 +1,356 @@
+{
+  "name": "aide",
+  "nodes": {
+    "task_input": {
+      "id": "task_input",
+      "reads": [],
+      "writes": [
+        "budget_state.json",
+        "eval.py",
+        "initial.py",
+        "knobs.json",
+        "task.yaml"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.task_input",
+      "callable_name": null,
+      "notes": "Materialize the selected task into the work directory.",
+      "_type": "FnNode"
+    },
+    "seed_run": {
+      "id": "seed_run",
+      "reads": [],
+      "writes": [
+        "aide_state.json",
+        "tree_state.json"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.seed aide_state.json tree_state.json",
+      "callable_name": null,
+      "notes": "Seed the run's population, tree, and per-mode state files.",
+      "_type": "FnNode"
+    },
+    "budget_check": {
+      "id": "budget_check",
+      "reads": [
+        "budget_state.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.common.budget check",
+      "gate_prompt": "reloop while the eval budget is unspent, proceed once it is spent.",
+      "max_iterations": 500,
+      "_type": "GateNode"
+    },
+    "exit_aide": {
+      "id": "exit_aide",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Loop exit point",
+      "_type": "FnNode"
+    },
+    "search_policy": {
+      "id": "search_policy",
+      "reads": [
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_action.txt",
+        "aide_target.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:search_policy",
+      "notes": "Score the tree and pick DRAFT, IMPROVE, or DEBUG.",
+      "_type": "FnNode"
+    },
+    "action_gate": {
+      "id": "action_gate",
+      "reads": [
+        "aide_action.txt"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.aide.gate action",
+      "gate_prompt": "draft a new solution, improve the best node, or debug a buggy node.",
+      "max_iterations": null,
+      "_type": "GateNode"
+    },
+    "join_aide-action": {
+      "id": "join_aide-action",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Conditional join point",
+      "_type": "FnNode"
+    },
+    "build_draft_prompt": {
+      "id": "build_draft_prompt",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_draft_prompt",
+      "notes": "Prompt with the task header and its initial code.",
+      "_type": "FnNode"
+    },
+    "draft_generate": {
+      "id": "draft_generate",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AIDE, a code optimization agent using tree search. Generate a new solution from scratch for the given task. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "build_improve_prompt": {
+      "id": "build_improve_prompt",
+      "reads": [
+        "aide_target.json",
+        "task.yaml",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_improve_prompt",
+      "notes": "Prompt with the target node's code and its search path.",
+      "_type": "FnNode"
+    },
+    "improve_generate": {
+      "id": "improve_generate",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AIDE. Improve the best solution found so far. Build on what works and enhance performance. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "build_debug_prompt": {
+      "id": "build_debug_prompt",
+      "reads": [
+        "aide_target.json",
+        "task.yaml",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_debug_prompt",
+      "notes": "Prompt with the buggy node's code and its error output.",
+      "_type": "FnNode"
+    },
+    "debug_generate": {
+      "id": "debug_generate",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AIDE. Fix the bugs in the given solution. The code has errors \u2014 analyze the output and produce a working version. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.5,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "sandbox_eval": {
+      "id": "sandbox_eval",
+      "reads": [
+        "candidate.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "Run the task's eval command on the candidate and record the score.",
+      "_type": "FnNode"
+    },
+    "tree_update": {
+      "id": "tree_update",
+      "reads": [
+        "aide_target.json",
+        "candidate.py",
+        "eval_result.json",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_state.json",
+        "best_solution.py",
+        "tree_state.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:update_tree",
+      "notes": "Add the candidate to the tree and promote it when it scores best.",
+      "_type": "FnNode"
+    }
+  },
+  "edges": [
+    {
+      "source": "build_draft_prompt",
+      "target": "draft_generate",
+      "condition": null
+    },
+    {
+      "source": "action_gate",
+      "target": "build_draft_prompt",
+      "condition": "draft"
+    },
+    {
+      "source": "draft_generate",
+      "target": "join_aide-action",
+      "condition": null
+    },
+    {
+      "source": "build_improve_prompt",
+      "target": "improve_generate",
+      "condition": null
+    },
+    {
+      "source": "action_gate",
+      "target": "build_improve_prompt",
+      "condition": "improve"
+    },
+    {
+      "source": "improve_generate",
+      "target": "join_aide-action",
+      "condition": null
+    },
+    {
+      "source": "build_debug_prompt",
+      "target": "debug_generate",
+      "condition": null
+    },
+    {
+      "source": "action_gate",
+      "target": "build_debug_prompt",
+      "condition": "debug"
+    },
+    {
+      "source": "debug_generate",
+      "target": "join_aide-action",
+      "condition": null
+    },
+    {
+      "source": "search_policy",
+      "target": "action_gate",
+      "condition": null
+    },
+    {
+      "source": "join_aide-action",
+      "target": "sandbox_eval",
+      "condition": null
+    },
+    {
+      "source": "sandbox_eval",
+      "target": "tree_update",
+      "condition": null
+    },
+    {
+      "source": "tree_update",
+      "target": "budget_check",
+      "condition": null
+    },
+    {
+      "source": "budget_check",
+      "target": "search_policy",
+      "condition": "reloop"
+    },
+    {
+      "source": "budget_check",
+      "target": "exit_aide",
+      "condition": "proceed"
+    },
+    {
+      "source": "task_input",
+      "target": "seed_run",
+      "condition": null
+    },
+    {
+      "source": "seed_run",
+      "target": "search_policy",
+      "condition": null
+    }
+  ],
+  "start_node": "task_input",
+  "terminal": true,
+  "knob_values": {
+    "temperature": 0.7,
+    "debug_prob": 0.3,
+    "max_tree_depth": 10.0
+  },
+  "knob_bounds": {
+    "temperature": [
+      0.3,
+      0.5,
+      0.7,
+      0.9
+    ],
+    "debug_prob": [
+      0.1,
+      0.2,
+      0.3,
+      0.5
+    ],
+    "max_tree_depth": [
+      5.0,
+      10.0,
+      20.0
+    ]
+  }
+}

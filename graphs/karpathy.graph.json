@@ -1,0 +1,185 @@
+{
+  "name": "karpathy",
+  "nodes": {
+    "task_input": {
+      "id": "task_input",
+      "reads": [],
+      "writes": [
+        "budget_state.json",
+        "eval.py",
+        "initial.py",
+        "knobs.json",
+        "task.yaml"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.task_input",
+      "callable_name": null,
+      "notes": "Materialize the selected task into the work directory.",
+      "_type": "FnNode"
+    },
+    "seed_run": {
+      "id": "seed_run",
+      "reads": [],
+      "writes": [
+        "best_solution.py",
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.seed best_solution.py eval_result.json",
+      "callable_name": null,
+      "notes": "Seed the run's population, tree, and per-mode state files.",
+      "_type": "FnNode"
+    },
+    "budget_check": {
+      "id": "budget_check",
+      "reads": [
+        "budget_state.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.common.budget check",
+      "gate_prompt": "reloop while the eval budget is unspent, proceed once it is spent.",
+      "max_iterations": 500,
+      "_type": "GateNode"
+    },
+    "exit_karpathy": {
+      "id": "exit_karpathy",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Loop exit point",
+      "_type": "FnNode"
+    },
+    "build_prompt": {
+      "id": "build_prompt",
+      "reads": [
+        "best_solution.py",
+        "eval_result.json",
+        "task.yaml"
+      ],
+      "writes": [
+        "agent_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.karpathy.ops:build_agent_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "agent": {
+      "id": "agent",
+      "reads": [
+        "agent_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "role": "builder",
+      "model": "sonnet",
+      "prompt_template": "You are an autonomous code optimization agent (inspired by Karpathy's approach). You observe evaluation output, reason about what to change, and iterate. Think step by step. Output a single fenced code block with the complete solution.",
+      "tools": [],
+      "timeout": null,
+      "max_iterations": 10,
+      "post_checks": [],
+      "_type": "AgentNode"
+    },
+    "sandbox_eval": {
+      "id": "sandbox_eval",
+      "reads": [
+        "candidate.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "Run the task's eval command on the candidate and record the score.",
+      "_type": "FnNode"
+    },
+    "update": {
+      "id": "update",
+      "reads": [
+        "candidate.py",
+        "eval_result.json"
+      ],
+      "writes": [
+        "best_solution.py",
+        "karpathy_state.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.karpathy.ops:update_karpathy_state",
+      "notes": "",
+      "_type": "FnNode"
+    }
+  },
+  "edges": [
+    {
+      "source": "build_prompt",
+      "target": "agent",
+      "condition": null
+    },
+    {
+      "source": "agent",
+      "target": "sandbox_eval",
+      "condition": null
+    },
+    {
+      "source": "sandbox_eval",
+      "target": "update",
+      "condition": null
+    },
+    {
+      "source": "update",
+      "target": "budget_check",
+      "condition": null
+    },
+    {
+      "source": "budget_check",
+      "target": "build_prompt",
+      "condition": "reloop"
+    },
+    {
+      "source": "budget_check",
+      "target": "exit_karpathy",
+      "condition": "proceed"
+    },
+    {
+      "source": "task_input",
+      "target": "seed_run",
+      "condition": null
+    },
+    {
+      "source": "seed_run",
+      "target": "build_prompt",
+      "condition": null
+    }
+  ],
+  "start_node": "task_input",
+  "terminal": true,
+  "knob_values": {
+    "temperature": 0.7,
+    "max_turns": 10.0
+  },
+  "knob_bounds": {
+    "temperature": [
+      0.3,
+      0.5,
+      0.7,
+      0.9
+    ],
+    "max_turns": [
+      5.0,
+      10.0,
+      20.0,
+      50.0
+    ]
+  }
+}

@@ -1,0 +1,355 @@
+{
+  "name": "autoscientists",
+  "nodes": {
+    "task_input": {
+      "id": "task_input",
+      "reads": [],
+      "writes": [
+        "budget_state.json",
+        "eval.py",
+        "initial.py",
+        "knobs.json",
+        "task.yaml"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.task_input",
+      "callable_name": null,
+      "notes": "Materialize the selected task into the work directory.",
+      "_type": "FnNode"
+    },
+    "fork_autoscientists-scientists": {
+      "id": "fork_autoscientists-scientists",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "targets": [
+        "scientist_prompt_0",
+        "scientist_prompt_1",
+        "scientist_prompt_2"
+      ],
+      "_type": "ForkNode"
+    },
+    "join_autoscientists-scientists": {
+      "id": "join_autoscientists-scientists",
+      "reads": [
+        "scientist_result_0.json",
+        "scientist_result_1.json",
+        "scientist_result_2.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "sources": [
+        "scientist_eval_0",
+        "scientist_eval_1",
+        "scientist_eval_2"
+      ],
+      "_type": "JoinNode"
+    },
+    "scientist_prompt_0": {
+      "id": "scientist_prompt_0",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "scientist_prompt_0.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.autoscientists.ops:build_scientist_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "scientist_gen_0": {
+      "id": "scientist_gen_0",
+      "reads": [
+        "scientist_prompt_0.md"
+      ],
+      "writes": [
+        "scientist_0.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are an independent scientist agent. Generate a creative and unique solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.9,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "scientist_eval_0": {
+      "id": "scientist_eval_0",
+      "reads": [
+        "scientist_0.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "scientist_result_0.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "scientist_prompt_1": {
+      "id": "scientist_prompt_1",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "scientist_prompt_1.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.autoscientists.ops:build_scientist_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "scientist_gen_1": {
+      "id": "scientist_gen_1",
+      "reads": [
+        "scientist_prompt_1.md"
+      ],
+      "writes": [
+        "scientist_1.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are an independent scientist agent. Generate a creative and unique solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.9,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "scientist_eval_1": {
+      "id": "scientist_eval_1",
+      "reads": [
+        "scientist_1.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "scientist_result_1.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "scientist_prompt_2": {
+      "id": "scientist_prompt_2",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "scientist_prompt_2.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.autoscientists.ops:build_scientist_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "scientist_gen_2": {
+      "id": "scientist_gen_2",
+      "reads": [
+        "scientist_prompt_2.md"
+      ],
+      "writes": [
+        "scientist_2.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are an independent scientist agent. Generate a creative and unique solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.9,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "scientist_eval_2": {
+      "id": "scientist_eval_2",
+      "reads": [
+        "scientist_2.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "scientist_result_2.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "merge_prompt": {
+      "id": "merge_prompt",
+      "reads": [
+        "scientist_0.py",
+        "scientist_1.py",
+        "scientist_2.py",
+        "scientist_result_0.json",
+        "scientist_result_1.json",
+        "scientist_result_2.json"
+      ],
+      "writes": [
+        "merge_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.autoscientists.ops:build_merge_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "merge_generate": {
+      "id": "merge_generate",
+      "reads": [
+        "merge_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are a merge agent. Combine the best insights from multiple scientists' solutions. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "sandbox_eval": {
+      "id": "sandbox_eval",
+      "reads": [
+        "candidate.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "Run the task's eval command on the candidate and record the score.",
+      "_type": "FnNode"
+    },
+    "update": {
+      "id": "update",
+      "reads": [
+        "candidate.py",
+        "eval_result.json"
+      ],
+      "writes": [
+        "autoscientists_state.json",
+        "best_solution.py"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.autoscientists.ops:update_autoscientists",
+      "notes": "",
+      "_type": "FnNode"
+    }
+  },
+  "edges": [
+    {
+      "source": "fork_autoscientists-scientists",
+      "target": "join_autoscientists-scientists",
+      "condition": null
+    },
+    {
+      "source": "scientist_prompt_0",
+      "target": "scientist_gen_0",
+      "condition": null
+    },
+    {
+      "source": "scientist_gen_0",
+      "target": "scientist_eval_0",
+      "condition": null
+    },
+    {
+      "source": "scientist_prompt_1",
+      "target": "scientist_gen_1",
+      "condition": null
+    },
+    {
+      "source": "scientist_gen_1",
+      "target": "scientist_eval_1",
+      "condition": null
+    },
+    {
+      "source": "scientist_prompt_2",
+      "target": "scientist_gen_2",
+      "condition": null
+    },
+    {
+      "source": "scientist_gen_2",
+      "target": "scientist_eval_2",
+      "condition": null
+    },
+    {
+      "source": "merge_prompt",
+      "target": "merge_generate",
+      "condition": null
+    },
+    {
+      "source": "merge_generate",
+      "target": "sandbox_eval",
+      "condition": null
+    },
+    {
+      "source": "sandbox_eval",
+      "target": "update",
+      "condition": null
+    },
+    {
+      "source": "task_input",
+      "target": "fork_autoscientists-scientists",
+      "condition": null
+    },
+    {
+      "source": "join_autoscientists-scientists",
+      "target": "merge_prompt",
+      "condition": null
+    }
+  ],
+  "start_node": "task_input",
+  "terminal": true,
+  "knob_values": {
+    "n_scientists": 3.0,
+    "temperature": 0.9
+  },
+  "knob_bounds": {
+    "n_scientists": [
+      2.0,
+      3.0,
+      5.0
+    ],
+    "temperature": [
+      0.7,
+      0.8,
+      0.9,
+      1.0
+    ]
+  }
+}

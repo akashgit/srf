@@ -1,26 +1,51 @@
 # SRF — Scientific Research Factory
 
-SRF reimplements 13 AI-driven scientific discovery harnesses (from Flora Jia's harness-comparison benchmark) as composable factory workflow Packages. A single research question can be refracted through multiple strategies, each with tunable OptKnobs that the outer loop evolves.
+SRF reimplements 13 AI-driven scientific discovery harnesses (from Flora Jia's
+harness-comparison benchmark) as **composable refactory workflow Packages**. A single
+research question can be refracted through multiple strategies, each with tunable
+`OptKnob`s that an outer loop can evolve.
+
+## SRF is a pure package
+
+SRF declares **semantics**: the graph of each harness, its deterministic ops, and its
+tasks. It ships **no runtime** — no executor, no LLM client, no node loop. The DSH
+workflow spine is the only thing that walks an SRF graph.
+
+The handoff is `Workflow.to_dict()` → one `graph.json` per mode:
+
+```
+srf/modes/*.py  ──build──▶  Workflow (refactory flat DAG)  ──to_dict──▶  graph.json  ──▶  DSH spine
+```
+
+A graph is a **flat DAG**: a table of typed nodes plus labelled edges. Study loops are
+not nesting — they are a `reloop` edge from a gate back to the loop body's entry.
+Alternative branches (AIDE's draft/improve/debug, GEPA's mutate/merge) are gate-named
+edge conditions.
 
 ## Quick Start
 
 ```bash
-uv pip install -e '.[vertex]'
+uv pip install -e .
 
-# Run a mode on a task
-srf run --mode gepa --task circle_packing --budget 50 --provider vertex
-
-# Run with mock LLM (no API key needed — for testing)
-srf run --mode gepa --task circle_packing --budget 10 --mock-llm
-
-# List available modes and tasks
+# What is in the package
 srf modes
 srf tasks
+
+# Emit the graph IR the runtime loads
+srf graphs --out graphs
+srf graph --mode gepa
+
+# Load every emitted graph into the real DSH spine and walk it to completion
+srf probe --graphs graphs
 ```
+
+SRF has no `run` command: `srf run` prints the pointer to the runtime. Executing a mode
+is the DSH spine's job (`dsh science run --mode <mode> --task <task>` — see the project's
+`PLAN.md`, Phase 4).
 
 ## Modes
 
-All 13 harnesses are implemented. Each builds a Package DAG from factory primitives (FnNode, LLMNode, Loop, Conditional).
+All 13 harnesses are implemented as flat DAGs built from refactory's vocabulary.
 
 | Mode | Strategy | Best For |
 |------|----------|----------|
@@ -41,48 +66,20 @@ All 13 harnesses are implemented. Each builds a Package DAG from factory primiti
 ## CLI Reference
 
 ```
-srf run       --mode <mode> --task <task> [options]    Run a single mode on a task
-srf modes                                              List registered modes
-srf tasks     [--category <cat>]                       List available tasks
-srf lab       --task <task> --modes a,b,c [options]    Compare modes head-to-head
-srf evolve    --task <task> [options]                   MAP-Elites knob evolution
-srf validate  --mode <m> --task <t> --baseline-trace <path>  Compare traces
+srf modes                                       List registered modes
+srf tasks     [--category <cat>]                List available tasks
+srf graph     --mode <mode> [--out <path>]      Emit one mode's graph.json
+srf graphs    [--out <dir>]                     Emit every mode's graph.json
+srf probe     [--graphs <dir>] [--spine <url>]  Load the graphs into the DSH spine
+srf run                                         Prints where the runtime lives
 ```
 
-### `srf run` flags
+### `srf probe` — the boundary test
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--mode` | required | Mode name (e.g., `gepa`, `aide`, `best_of_n`) |
-| `--task` | required | Task name (e.g., `circle_packing`) |
-| `--budget` | 50 | Max eval iterations |
-| `--knob key=val` | — | Override OptKnob values (repeatable) |
-| `--provider` | auto | `vertex`, `openai`, `anthropic`, or `auto` |
-| `--mock-llm` | off | Use mock LLM (no API key needed) |
-| `--output-dir` | `outputs/<run_id>` | Where to write results |
-
-### `srf lab` — compare modes
-
-```bash
-srf lab --task circle_packing --modes gepa,aide,scs --budget 150 --mock-llm
-```
-
-Splits budget evenly across modes, runs each, and reports a winner with per-mode scores.
-
-### `srf evolve` — MAP-Elites knob evolution
-
-```bash
-srf evolve --task circle_packing --generations 20 --budget 1000 --mock-llm
-```
-
-Evolves mode + knob configurations over a 3D feature grid (harness type × search strategy × eval budget). Uses random and improvement emitters to explore the joint space.
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--task` | required | Task to optimize |
-| `--generations` | 10 | Number of evolution generations |
-| `--budget` | 1000 | Total eval budget across all generations |
-| `--mock-llm` | off | Use mock LLM |
+`srf probe` reads the emitted `graph.json` files exactly as the runtime does, validates
+them, and then drives the real spine to completion, taking every gate outcome in turn.
+It exits non-zero if any graph fails to load, fails validation, stalls, or contains a
+node the walk never reaches.
 
 ## Available Tasks
 
@@ -116,48 +113,46 @@ reference_score: 1.0    # optional — Flora baseline
 # initial.py — seed solution copied into the working directory
 ```
 
-Validate with:
-
-```bash
-srf validate --mode gepa --task my_task --baseline-trace path/to/flora_trace.jsonl
-```
-
 The task registry auto-discovers tasks from the directory structure.
 
 ## Architecture
 
 | Layer | Location | Purpose |
 |-------|----------|---------|
-| **Modes** | `srf/modes/` | One `.py` per harness — builds a Package DAG from factory primitives |
-| **Ops** | `srf/ops/` | Python callables for FnNode — domain logic (eval, mutation, selection) |
+| **Modes** | `srf/modes/` | One `.py` per harness — composes refactory `Package`s into a flat DAG |
+| **Packaging** | `srf/packaging.py` | Node/package/loop builders shared by every mode |
+| **Graphs** | `srf/graphs.py` | Emits `graph.json` — the boundary with the runtime |
+| **Ops** | `srf/ops/` | Deterministic Python steps the graph's `FnNode`s name |
 | **Tasks** | `srf/tasks/` | Benchmark problems with `task.yaml` + `eval.py` + `initial.py` |
-| **Lab Director** | `srf/lab/director.py` | Multi-mode orchestration — run and compare modes on a task |
-| **MAP-Elites** | `srf/lab/map_elites.py` | Outer loop evolving mode + knob configurations |
+| **MAP-Elites** | `srf/lab/map_elites.py` | Knob/topology search used by the outer loop (Phase 5) |
 | **Tracing** | `srf/ops/common/tracing.py` | Structured trace logging (JSONL) for each run |
 | **Budget** | `srf/ops/common/budget.py` | Eval budget tracking and gating |
 | **Hack Detection** | `srf/ops/common/` | Detects shortcut solutions that game the eval |
 | **Telemetry** | `srf/logging/` | Structured logging via structlog |
-| **Memory** | `srf/_factory_shim.py` | MemoryDeclaration for cross-iteration context |
 
-Modes compose Packages from Ops. The executor walks the DAG, calling Ops and LLM nodes in sequence, respecting Loop gates and Conditional branches.
+A mode composes `Package`s from nodes and deterministic ops; `Package.compile()` lowers
+the composition to the flat `Workflow` IR; `Workflow.to_dict()` serializes it. Loops
+become a gate's `reloop` edge, branches become gate-named edge conditions, and
+parallelism becomes `ForkNode` / `JoinNode`.
 
-## Provider Setup
-
-| Provider | Install | Env Vars |
-|----------|---------|----------|
-| Vertex AI | `uv pip install -e '.[vertex]'` | `ANTHROPIC_VERTEX_PROJECT_ID`, `GOOGLE_CLOUD_PROJECT` |
-| OpenAI | `uv pip install -e '.[openai]'` | `OPENAI_API_KEY` |
-| Anthropic | `uv pip install -e '.'` | `ANTHROPIC_API_KEY` |
-| Mock | `uv pip install -e '.'` | — (use `--mock-llm`) |
-
-Provider auto-detection (`--provider auto`, the default): SRF checks for `OPENAI_API_KEY`, then `ANTHROPIC_VERTEX_PROJECT_ID`, then `ANTHROPIC_API_KEY` in that order.
+A node's `reads` / `writes` declarations are the interface to its op: the op resolves
+its own input and output filenames from the node that invoked it, so two branches of a
+fork never collide on an artifact. `tests/test_mode_graphs.py` enforces that every
+declared read is written by an ancestor.
 
 ## Adding a Mode
 
-1. Create `srf/modes/{name}.py` with a `build_{name}_workflow() -> Workflow` function
-2. Build your DAG from factory primitives: `FnNode`, `LLMNode`, `Loop`, `Sequential`, `Conditional`
-3. Implement ops in `srf/ops/{name}/`
-4. The mode registry auto-discovers any module in `srf/modes/` that exports the builder function
+1. Create `srf/modes/{name}.py` with `build_{name}_workflow() -> Workflow`, plus
+   `build_{name}_knobs()` and `build_{name}_memory()`.
+2. Build the body with `srf.packaging` helpers: `chain`, `single`, `op`, `llm`, `agent`,
+   `gate`, `eval_step`, `Sequential`, `Conditional`, `Parallel`, `loop`, `budget_gate`.
+3. Start the graph with `task_input()` (writes the problem and the run settings) and, for
+   a stateful loop, `seed_run([...])` (gives the search a starting point).
+4. Finish with `compile_mode("<name>", declared(root, knobs=KNOBS, memory=MEMORY))`.
+5. Implement any new deterministic steps in `srf/ops/{name}/`.
+6. Run `srf graphs && srf probe`, and `pytest tests/test_mode_graphs.py`.
+
+The mode registry auto-discovers any module in `srf/modes/` that exports the builder.
 
 ## License
 

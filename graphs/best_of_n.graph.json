@@ -1,0 +1,422 @@
+{
+  "name": "best_of_n",
+  "nodes": {
+    "task_input": {
+      "id": "task_input",
+      "reads": [],
+      "writes": [
+        "budget_state.json",
+        "eval.py",
+        "initial.py",
+        "knobs.json",
+        "task.yaml"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.task_input",
+      "callable_name": null,
+      "notes": "Materialize the selected task into the work directory.",
+      "_type": "FnNode"
+    },
+    "fork_best_of_n-samples": {
+      "id": "fork_best_of_n-samples",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "targets": [
+        "build_prompt_0",
+        "build_prompt_1",
+        "build_prompt_2",
+        "build_prompt_3",
+        "build_prompt_4"
+      ],
+      "_type": "ForkNode"
+    },
+    "join_best_of_n-samples": {
+      "id": "join_best_of_n-samples",
+      "reads": [
+        "eval_result_0.json",
+        "eval_result_1.json",
+        "eval_result_2.json",
+        "eval_result_3.json",
+        "eval_result_4.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "sources": [
+        "eval_0",
+        "eval_1",
+        "eval_2",
+        "eval_3",
+        "eval_4"
+      ],
+      "_type": "JoinNode"
+    },
+    "build_prompt_0": {
+      "id": "build_prompt_0",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "candidate_prompt_0.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.best_of_n.ops:build_candidate_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "generate_0": {
+      "id": "generate_0",
+      "reads": [
+        "candidate_prompt_0.md"
+      ],
+      "writes": [
+        "candidate_0.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are a code optimization agent. Given a task description and initial code, produce an improved solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.8,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "eval_0": {
+      "id": "eval_0",
+      "reads": [
+        "candidate_0.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result_0.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "build_prompt_1": {
+      "id": "build_prompt_1",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "candidate_prompt_1.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.best_of_n.ops:build_candidate_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "generate_1": {
+      "id": "generate_1",
+      "reads": [
+        "candidate_prompt_1.md"
+      ],
+      "writes": [
+        "candidate_1.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are a code optimization agent. Given a task description and initial code, produce an improved solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.8,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "eval_1": {
+      "id": "eval_1",
+      "reads": [
+        "candidate_1.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result_1.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "build_prompt_2": {
+      "id": "build_prompt_2",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "candidate_prompt_2.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.best_of_n.ops:build_candidate_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "generate_2": {
+      "id": "generate_2",
+      "reads": [
+        "candidate_prompt_2.md"
+      ],
+      "writes": [
+        "candidate_2.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are a code optimization agent. Given a task description and initial code, produce an improved solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.8,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "eval_2": {
+      "id": "eval_2",
+      "reads": [
+        "candidate_2.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result_2.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "build_prompt_3": {
+      "id": "build_prompt_3",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "candidate_prompt_3.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.best_of_n.ops:build_candidate_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "generate_3": {
+      "id": "generate_3",
+      "reads": [
+        "candidate_prompt_3.md"
+      ],
+      "writes": [
+        "candidate_3.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are a code optimization agent. Given a task description and initial code, produce an improved solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.8,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "eval_3": {
+      "id": "eval_3",
+      "reads": [
+        "candidate_3.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result_3.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "build_prompt_4": {
+      "id": "build_prompt_4",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "candidate_prompt_4.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.best_of_n.ops:build_candidate_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "generate_4": {
+      "id": "generate_4",
+      "reads": [
+        "candidate_prompt_4.md"
+      ],
+      "writes": [
+        "candidate_4.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are a code optimization agent. Given a task description and initial code, produce an improved solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.8,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "eval_4": {
+      "id": "eval_4",
+      "reads": [
+        "candidate_4.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result_4.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "select_best": {
+      "id": "select_best",
+      "reads": [
+        "candidate_0.py",
+        "candidate_1.py",
+        "candidate_2.py",
+        "candidate_3.py",
+        "candidate_4.py",
+        "eval_result_0.json",
+        "eval_result_1.json",
+        "eval_result_2.json",
+        "eval_result_3.json",
+        "eval_result_4.json"
+      ],
+      "writes": [
+        "best_of_n_result.json",
+        "best_solution.py"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.best_of_n.ops:select_best_candidate",
+      "notes": "",
+      "_type": "FnNode"
+    }
+  },
+  "edges": [
+    {
+      "source": "fork_best_of_n-samples",
+      "target": "join_best_of_n-samples",
+      "condition": null
+    },
+    {
+      "source": "build_prompt_0",
+      "target": "generate_0",
+      "condition": null
+    },
+    {
+      "source": "generate_0",
+      "target": "eval_0",
+      "condition": null
+    },
+    {
+      "source": "build_prompt_1",
+      "target": "generate_1",
+      "condition": null
+    },
+    {
+      "source": "generate_1",
+      "target": "eval_1",
+      "condition": null
+    },
+    {
+      "source": "build_prompt_2",
+      "target": "generate_2",
+      "condition": null
+    },
+    {
+      "source": "generate_2",
+      "target": "eval_2",
+      "condition": null
+    },
+    {
+      "source": "build_prompt_3",
+      "target": "generate_3",
+      "condition": null
+    },
+    {
+      "source": "generate_3",
+      "target": "eval_3",
+      "condition": null
+    },
+    {
+      "source": "build_prompt_4",
+      "target": "generate_4",
+      "condition": null
+    },
+    {
+      "source": "generate_4",
+      "target": "eval_4",
+      "condition": null
+    },
+    {
+      "source": "task_input",
+      "target": "fork_best_of_n-samples",
+      "condition": null
+    },
+    {
+      "source": "join_best_of_n-samples",
+      "target": "select_best",
+      "condition": null
+    }
+  ],
+  "start_node": "task_input",
+  "terminal": true,
+  "knob_values": {
+    "n_candidates": 5.0,
+    "temperature": 0.8
+  },
+  "knob_bounds": {
+    "n_candidates": [
+      3.0,
+      5.0,
+      10.0,
+      20.0
+    ],
+    "temperature": [
+      0.5,
+      0.7,
+      0.8,
+      0.9,
+      1.0
+    ]
+  }
+}

@@ -1,16 +1,40 @@
 """AutoResearch mode — research-driven optimization.
 
-DAG structure:
-  Sequential(
-    research_phase, research_llm,
-    Loop(body=Sequential(optimize_prompt, optimize_llm, eval, update), gate=budget)
-  )
+Graph:
+  task_input → seed_run → research_phase → research_llm → Loop:
+    optimize_prompt → optimize_llm → sandbox_eval → update
+                                                        │
+                                                        ▼
+                                  budget_check ──reloop──▶ optimize_prompt
+                                               ──proceed─▶ exit
+
+The research phase runs once and writes ``research_output.md``; every iteration
+then conditions its optimization prompt on those findings and folds the accepted
+candidate back into ``best_solution.py``.
 """
 
 from __future__ import annotations
 
-from srf._factory_shim import (
-    Edge, FnNode, GateNode, LLMNode, Loop, MemoryDeclaration, OptKnob, Sequential, Workflow,
+from factory.workflow.primitives import Workflow
+
+from srf.packaging import (
+    MemoryDeclaration,
+    OptKnob,
+    Sequential,
+    budget_gate,
+    chain,
+    compile_mode,
+    declared,
+    eval_step,
+    knob,
+    llm,
+    loop,
+    memory,
+    op,
+    port,
+    seed_run,
+    single,
+    task_input,
 )
 
 RESEARCH_PROMPT = (
@@ -23,46 +47,118 @@ OPTIMIZE_PROMPT = (
     "to produce an improved solution. Output a single fenced code block."
 )
 
+KNOBS: list[OptKnob] = [
+    knob(
+        "temperature",
+        "threshold",
+        0.7,
+        [0.3, 0.5, 0.7, 0.9],
+        "optimize_llm",
+        "LLM sampling temperature",
+    ),
+    knob(
+        "research_depth",
+        "threshold",
+        3.0,
+        [1.0, 3.0, 5.0],
+        "research_phase",
+        "Number of research iterations",
+    ),
+]
+
+SEEDS = ("best_solution.py",)
+"""The optimization prompt reads the incumbent on the loop's first pass."""
+
+MEMORY: list[MemoryDeclaration] = [memory("autoresearch.findings", "log")]
+
+UPDATE_WRITES = {"autoresearch_state.json", "best_solution.py"}
+
+
+def _research_package():
+    """Synthesize the literature once, before the optimization loop starts."""
+    research = op(
+        "research_phase",
+        "srf.ops.autoresearch.ops:research_phase",
+        reads={"task.yaml"},
+        writes={"research_prompt.md"},
+    )
+    research_llm = llm(
+        "research_llm",
+        RESEARCH_PROMPT,
+        temperature=0.5,
+        reads={"research_prompt.md"},
+        writes={"research_output.md"},
+    )
+    return chain(
+        "autoresearch-research",
+        [research, research_llm],
+        inputs=[port("task", "task.yaml", "application/yaml")],
+        outputs=[port("findings", "research_output.md")],
+        requires={"task.yaml"},
+        produces={"research_prompt.md", "research_output.md"},
+    )
+
+
+def _iteration_package():
+    """One iteration: research-informed optimization, scored and recorded."""
+    optimize_prompt = single(
+        op(
+            "optimize_prompt",
+            "srf.ops.autoresearch.ops:build_optimization_prompt",
+            reads={"research_output.md", "best_solution.py", "task.yaml"},
+            writes={"optimize_prompt.md"},
+        ),
+        requires={"research_output.md", "best_solution.py", "task.yaml"},
+        produces={"optimize_prompt.md"},
+    )
+    optimize_llm = single(
+        llm(
+            "optimize_llm",
+            OPTIMIZE_PROMPT,
+            temperature=0.7,
+            reads={"optimize_prompt.md"},
+            writes={"candidate.py"},
+        ),
+        requires={"optimize_prompt.md"},
+        produces={"candidate.py"},
+    )
+    update = single(
+        op(
+            "update",
+            "srf.ops.autoresearch.ops:update_autoresearch",
+            reads={"eval_result.json", "candidate.py"},
+            writes=UPDATE_WRITES,
+        ),
+        requires={"eval_result.json", "candidate.py"},
+        produces=UPDATE_WRITES,
+    )
+    return Sequential(
+        optimize_prompt,
+        optimize_llm,
+        eval_step("sandbox_eval"),
+        update,
+        name="autoresearch-iteration",
+    )
+
 
 def build_autoresearch_knobs() -> list[OptKnob]:
-    return [
-        OptKnob(name="temperature", kind="threshold", default=0.7,
-                bounds=[0.3, 0.5, 0.7, 0.9], node_id="generate",
-                description="LLM sampling temperature"),
-        OptKnob(name="research_depth", kind="threshold", default=3.0,
-                bounds=[1.0, 3.0, 5.0], node_id="research",
-                description="Number of research iterations"),
-    ]
+    """The knob declarations, for callers that only want the tunables."""
+    return list(KNOBS)
 
 
 def build_autoresearch_memory() -> list[MemoryDeclaration]:
-    return [
-        MemoryDeclaration(namespace="autoresearch.findings", kind="log", retention="run"),
-    ]
+    """The memory declarations, for callers that only want the namespaces."""
+    return list(MEMORY)
 
 
 def build_autoresearch_workflow() -> Workflow:
-    research = FnNode(name="research_phase", callable_name="srf.ops.autoresearch.ops:research_phase",
-                      reads={"task.yaml"}, writes={"research_prompt.md"})
-    research_llm = LLMNode(name="research_llm", model="sonnet", temperature=0.5,
-                           system_prompt=RESEARCH_PROMPT,
-                           reads={"research_prompt.md"}, writes={"research_output.md"})
-
-    opt_prompt = FnNode(name="optimize_prompt", callable_name="srf.ops.autoresearch.ops:build_optimization_prompt",
-                        reads={"research_output.md", "best_solution.py", "task.yaml"}, writes={"optimize_prompt.md"})
-    opt_llm = LLMNode(name="optimize_llm", model="sonnet", temperature=0.7,
-                      system_prompt=OPTIMIZE_PROMPT, reads={"optimize_prompt.md"}, writes={"candidate.py"})
-    evaluate = FnNode(name="sandbox_eval", callable_name="srf.ops.common.sandbox:run_eval",
-                      reads={"candidate.py", "task.yaml"}, writes={"eval_result.json"})
-    update = FnNode(name="update", callable_name="srf.ops.autoresearch.ops:update_autoresearch",
-                    reads={"eval_result.json", "candidate.py"}, writes={"autoresearch_state.json", "best_solution.py"})
-
-    budget_gate = GateNode(name="budget_check", evaluator_command="python -m srf.ops.common.budget check")
-    opt_loop = Loop(name="optimize-loop",
-                    body=Sequential(name="opt-iter", children=[opt_prompt, opt_llm, evaluate, update]),
-                    gate=budget_gate, max_iterations=500)
-
-    root = Sequential(name="autoresearch-main", children=[research, research_llm, opt_loop])
-
-    return Workflow(name="autoresearch", root=root,
-                    knobs=build_autoresearch_knobs(), memory=build_autoresearch_memory())
+    """Lower autoresearch to the flat DAG the spine executes."""
+    study = loop(_iteration_package(), budget_gate(), name="autoresearch")
+    root = Sequential(
+        task_input(),
+        seed_run(SEEDS),
+        _research_package(),
+        study,
+        name="autoresearch",
+    )
+    return compile_mode("autoresearch", declared(root, knobs=KNOBS, memory=MEMORY))

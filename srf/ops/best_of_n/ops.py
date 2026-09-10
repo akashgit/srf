@@ -6,20 +6,25 @@ from typing import Any
 
 import structlog
 
+from srf.ops.common.paths import write_declared
 from srf.ops.common.prompts import format_instructions, format_program_context, format_task_header
 
 logger = structlog.get_logger()
 
 
 def build_candidate_prompt(ctx: Any) -> None:
-    """Build prompt for generating a candidate solution."""
+    """Build prompt for generating a candidate solution.
+
+    Each parallel branch declares its own prompt file, so the N candidates
+    sampled concurrently do not overwrite one another's prompt.
+    """
     task = ctx.task
     parts = [
         format_task_header(task),
         format_program_context(task.get("initial_code", ""), label="Initial Code"),
         format_instructions("best_of_n"),
     ]
-    ctx.write_text("candidate_prompt.md", "\n\n".join(parts))
+    write_declared(ctx, "candidate_prompt.md", "\n\n".join(parts), suffix=".md")
 
 
 def select_best_candidate(ctx: Any) -> None:

@@ -2,9 +2,27 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import structlog
+
+
+class _CurrentStderr:
+    """A stream that resolves ``sys.stderr`` on every write.
+
+    ``structlog.WriteLoggerFactory`` captures the file object it is handed, so
+    passing ``sys.stderr`` directly pins whatever stream existed at
+    configuration time — a test capture buffer that is later closed, or a
+    replaced stream. Resolving at write time keeps a configured logger usable
+    for the life of the process.
+    """
+
+    def write(self, message: str) -> int:
+        return sys.stderr.write(message)
+
+    def flush(self) -> None:
+        sys.stderr.flush()
 
 
 def configure_logging(
@@ -29,8 +47,7 @@ def configure_logging(
         log_file = log_dir / f"{harness}_{task}_{run_id}.jsonl"
         factory = structlog.WriteLoggerFactory(file=open(log_file, "a"))
     else:
-        import sys as _sys
-        factory = structlog.WriteLoggerFactory(file=_sys.stderr)
+        factory = structlog.WriteLoggerFactory(file=_CurrentStderr())
 
     structlog.configure(
         processors=processors,

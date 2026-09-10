@@ -1,0 +1,233 @@
+{
+  "name": "autoresearch",
+  "nodes": {
+    "task_input": {
+      "id": "task_input",
+      "reads": [],
+      "writes": [
+        "budget_state.json",
+        "eval.py",
+        "initial.py",
+        "knobs.json",
+        "task.yaml"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.task_input",
+      "callable_name": null,
+      "notes": "Materialize the selected task into the work directory.",
+      "_type": "FnNode"
+    },
+    "seed_run": {
+      "id": "seed_run",
+      "reads": [],
+      "writes": [
+        "best_solution.py"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.seed best_solution.py",
+      "callable_name": null,
+      "notes": "Seed the run's population, tree, and per-mode state files.",
+      "_type": "FnNode"
+    },
+    "research_phase": {
+      "id": "research_phase",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "research_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.autoresearch.ops:research_phase",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "research_llm": {
+      "id": "research_llm",
+      "reads": [
+        "research_prompt.md"
+      ],
+      "writes": [
+        "research_output.md"
+      ],
+      "blocking": true,
+      "system_prompt": "You are a research synthesis agent. Analyze the task and available literature to identify promising optimization strategies.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.5,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "budget_check": {
+      "id": "budget_check",
+      "reads": [
+        "budget_state.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.common.budget check",
+      "gate_prompt": "reloop while the eval budget is unspent, proceed once it is spent.",
+      "max_iterations": 500,
+      "_type": "GateNode"
+    },
+    "exit_autoresearch": {
+      "id": "exit_autoresearch",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Loop exit point",
+      "_type": "FnNode"
+    },
+    "optimize_prompt": {
+      "id": "optimize_prompt",
+      "reads": [
+        "best_solution.py",
+        "research_output.md",
+        "task.yaml"
+      ],
+      "writes": [
+        "optimize_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.autoresearch.ops:build_optimization_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "optimize_llm": {
+      "id": "optimize_llm",
+      "reads": [
+        "optimize_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AutoResearch, a research-informed code optimizer. Use research findings to produce an improved solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "sandbox_eval": {
+      "id": "sandbox_eval",
+      "reads": [
+        "candidate.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "Run the task's eval command on the candidate and record the score.",
+      "_type": "FnNode"
+    },
+    "update": {
+      "id": "update",
+      "reads": [
+        "candidate.py",
+        "eval_result.json"
+      ],
+      "writes": [
+        "autoresearch_state.json",
+        "best_solution.py"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.autoresearch.ops:update_autoresearch",
+      "notes": "",
+      "_type": "FnNode"
+    }
+  },
+  "edges": [
+    {
+      "source": "research_phase",
+      "target": "research_llm",
+      "condition": null
+    },
+    {
+      "source": "optimize_prompt",
+      "target": "optimize_llm",
+      "condition": null
+    },
+    {
+      "source": "optimize_llm",
+      "target": "sandbox_eval",
+      "condition": null
+    },
+    {
+      "source": "sandbox_eval",
+      "target": "update",
+      "condition": null
+    },
+    {
+      "source": "update",
+      "target": "budget_check",
+      "condition": null
+    },
+    {
+      "source": "budget_check",
+      "target": "optimize_prompt",
+      "condition": "reloop"
+    },
+    {
+      "source": "budget_check",
+      "target": "exit_autoresearch",
+      "condition": "proceed"
+    },
+    {
+      "source": "task_input",
+      "target": "seed_run",
+      "condition": null
+    },
+    {
+      "source": "seed_run",
+      "target": "research_phase",
+      "condition": null
+    },
+    {
+      "source": "research_llm",
+      "target": "optimize_prompt",
+      "condition": null
+    }
+  ],
+  "start_node": "task_input",
+  "terminal": true,
+  "knob_values": {
+    "temperature": 0.7,
+    "research_depth": 3.0
+  },
+  "knob_bounds": {
+    "temperature": [
+      0.3,
+      0.5,
+      0.7,
+      0.9
+    ],
+    "research_depth": [
+      1.0,
+      3.0,
+      5.0
+    ]
+  }
+}

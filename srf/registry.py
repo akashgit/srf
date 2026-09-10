@@ -9,41 +9,49 @@ from typing import Any, Callable
 
 import structlog
 
-from srf._factory_shim import Workflow
+from factory.workflow.primitives import Workflow
 from srf.tasks.registry import TaskRegistry
 
 logger = structlog.get_logger()
 
 
 class ModeRegistry:
-    """Auto-discovers mode modules in srf/modes/ and maps names to Package builders."""
+    """Auto-discovers mode modules in srf/modes/ and maps names to graph builders.
+
+    A module is a mode when it defines ``build_<name>_workflow()``; the module
+    itself is kept so callers can also reach its knob and memory declarations.
+    A module that fails to import is reported and skipped, never silently
+    treated as absent.
+    """
 
     def __init__(self) -> None:
-        self._modes: dict[str, Callable[[], Workflow]] = {}
+        self.modules: dict[str, Any] = {}
         self._discover()
 
     def _discover(self) -> None:
         import srf.modes as modes_pkg
 
         modes_path = Path(modes_pkg.__file__).parent
-        for finder, name, ispkg in pkgutil.iter_modules([str(modes_path)]):
+        for _finder, name, _ispkg in pkgutil.iter_modules([str(modes_path)]):
             try:
                 module = importlib.import_module(f"srf.modes.{name}")
-                builder_name = f"build_{name}_workflow"
-                if hasattr(module, builder_name):
-                    self._modes[name] = getattr(module, builder_name)
-                    logger.debug("mode.discovered", name=name)
-            except Exception as e:
-                logger.warning("mode.load_error", name=name, error=str(e))
+            except Exception as error:  # noqa: BLE001 - reported, not swallowed
+                logger.warning("mode.load_error", name=name, error=str(error))
+                continue
+            if hasattr(module, f"build_{name}_workflow"):
+                self.modules[name] = module
+                logger.debug("mode.discovered", name=name)
+
+    def builder(self, name: str) -> Callable[[], Workflow] | None:
+        module = self.modules.get(name)
+        return getattr(module, f"build_{name}_workflow", None) if module else None
 
     def get(self, name: str) -> Workflow | None:
-        builder = self._modes.get(name)
-        if builder:
-            return builder()
-        return None
+        builder = self.builder(name)
+        return builder() if builder else None
 
     def list_modes(self) -> list[str]:
-        return list(self._modes.keys())
+        return list(self.modules)
 
 
 _mode_registry: ModeRegistry | None = None

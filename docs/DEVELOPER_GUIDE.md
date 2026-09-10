@@ -1,5 +1,12 @@
 # SRF Developer Guide
 
+> **Stale — describes the pre-Phase-1 architecture.** This guide documents SRF's deleted
+> local runtime (`srf/_factory_shim.py`, `WorkflowExecutor`, the in-process LLM clients) and
+> the `srf run` / `srf lab` / `srf evolve` commands. SRF is now a pure package: it declares
+> flat-DAG graphs and the DSH workflow spine executes them. See `README.md` for the current
+> design and `/Users/akash/dsh/refactory-dsh/dsh-science/PLAN.md` for the migration. A full
+> rewrite of this guide is still outstanding.
+
 How to extend SRF: create modes, tasks, ops, providers, and integrate with the meta-optimization layer.
 
 ---

@@ -1,24 +1,36 @@
 """AutoScientists mode — multi-agent team.
 
-Multiple independent scientist agents attack the problem in parallel,
-then a merge agent combines the best insights.
+Graph:
+  task_input → Fork(N scientists) → Join → merge_prompt → merge_generate
+             → sandbox_eval → update
+  each scientist: scientist_prompt_i → scientist_gen_i → scientist_eval_i
 
-DAG structure:
-  Sequential(
-    build_prompt,
-    Parallel(*[scientist_generate_eval] * N),
-    build_merge_prompt,
-    merge_llm,
-    eval,
-    update
-  )
+N independent scientists attack the problem in parallel, each with its own prompt
+file, its own ``scientist_i.py`` and its own ``scientist_result_i.json``; a merge
+agent then combines their insights into a single candidate, which is scored and
+recorded. Per-branch files are what let the fork run concurrently.
 """
 
 from __future__ import annotations
 
-from srf._factory_shim import (
-    Edge, FnNode, GateNode, LLMNode, Loop, MemoryDeclaration, OptKnob,
-    Package, Parallel, Port, Sequential, StateContract, Workflow,
+from factory.workflow.primitives import Workflow
+
+from srf.packaging import (
+    MemoryDeclaration,
+    OptKnob,
+    Parallel,
+    Sequential,
+    chain,
+    compile_mode,
+    declared,
+    eval_step,
+    knob,
+    llm,
+    memory,
+    op,
+    port,
+    single,
+    task_input,
 )
 
 SCIENTIST_PROMPT = (
@@ -31,59 +43,124 @@ MERGE_PROMPT = (
     "Output a single fenced code block."
 )
 
+N_SCIENTISTS = 3
 
-def build_autoscientists_knobs() -> list[OptKnob]:
-    return [
-        OptKnob(name="n_scientists", kind="threshold", default=3.0,
-                bounds=[2.0, 3.0, 5.0], node_id="parallel",
-                description="Number of parallel scientist agents"),
-        OptKnob(name="temperature", kind="threshold", default=0.9,
-                bounds=[0.7, 0.8, 0.9, 1.0], node_id="generate",
-                description="LLM sampling temperature"),
-    ]
+KNOBS: list[OptKnob] = [
+    knob(
+        "n_scientists",
+        "threshold",
+        3.0,
+        [2.0, 3.0, 5.0],
+        "fork_autoscientists-scientists",
+        "Number of parallel scientist agents",
+    ),
+    knob(
+        "temperature",
+        "threshold",
+        0.9,
+        [0.7, 0.8, 0.9, 1.0],
+        "scientist_gen_0",
+        "LLM sampling temperature",
+    ),
+]
+
+MEMORY: list[MemoryDeclaration] = [memory("autoscientists.solutions", "log")]
+
+UPDATE_WRITES = {"autoscientists_state.json", "best_solution.py"}
 
 
-def build_autoscientists_memory() -> list[MemoryDeclaration]:
-    return [
-        MemoryDeclaration(namespace="autoscientists.solutions", kind="log", retention="run"),
-    ]
-
-
-def _build_scientist_package(index: int) -> Package:
-    prompt = FnNode(name=f"scientist_prompt_{index}",
-                    callable_name="srf.ops.autoscientists.ops:build_scientist_prompt",
-                    reads={"task.yaml"}, writes={"scientist_prompt.md"})
-    generate = LLMNode(name=f"scientist_gen_{index}", model="sonnet", temperature=0.9,
-                       system_prompt=SCIENTIST_PROMPT,
-                       reads={"scientist_prompt.md"}, writes={f"scientist_{index}.py"})
-    evaluate = FnNode(name=f"scientist_eval_{index}",
-                      callable_name="srf.ops.common.sandbox:run_eval",
-                      reads={f"scientist_{index}.py", "task.yaml"}, writes={f"scientist_result_{index}.json"})
-    return Package(
-        name=f"scientist-{index}", nodes=[prompt, generate, evaluate],
-        edges=[Edge(source=f"scientist_prompt_{index}", target=f"scientist_gen_{index}"),
-               Edge(source=f"scientist_gen_{index}", target=f"scientist_eval_{index}")],
+def _scientist_package(index: int):
+    """One scientist: its own prompt, its own solution, its own score."""
+    prompt_name = f"scientist_prompt_{index}.md"
+    prompt = op(
+        f"scientist_prompt_{index}",
+        "srf.ops.autoscientists.ops:build_scientist_prompt",
+        reads={"task.yaml"},
+        writes={prompt_name},
+    )
+    generate = llm(
+        f"scientist_gen_{index}",
+        SCIENTIST_PROMPT,
+        temperature=0.9,
+        reads={prompt_name},
+        writes={f"scientist_{index}.py"},
+    )
+    evaluate = op(
+        f"scientist_eval_{index}",
+        "srf.ops.common.sandbox:run_eval",
+        reads={f"scientist_{index}.py", "task.yaml"},
+        writes={f"scientist_result_{index}.json"},
+    )
+    return chain(
+        f"autoscientists-scientist-{index}",
+        [prompt, generate, evaluate],
+        inputs=[port("task", "task.yaml", "application/yaml")],
+        outputs=[port("result", f"scientist_result_{index}.json", "application/json")],
+        requires={"task.yaml"},
+        produces={prompt_name, f"scientist_{index}.py", f"scientist_result_{index}.json"},
     )
 
 
+def _merge_package():
+    """Combine every scientist's solution, then score and record the merge."""
+    reads = {f"scientist_{i}.py" for i in range(N_SCIENTISTS)} | {
+        f"scientist_result_{i}.json" for i in range(N_SCIENTISTS)
+    }
+    merge_prompt = single(
+        op(
+            "merge_prompt",
+            "srf.ops.autoscientists.ops:build_merge_prompt",
+            reads=reads,
+            writes={"merge_prompt.md"},
+        ),
+        requires=reads,
+        produces={"merge_prompt.md"},
+    )
+    merge_generate = single(
+        llm(
+            "merge_generate",
+            MERGE_PROMPT,
+            temperature=0.7,
+            reads={"merge_prompt.md"},
+            writes={"candidate.py"},
+        ),
+        requires={"merge_prompt.md"},
+        produces={"candidate.py"},
+    )
+    update = single(
+        op(
+            "update",
+            "srf.ops.autoscientists.ops:update_autoscientists",
+            reads={"eval_result.json", "candidate.py"},
+            writes=UPDATE_WRITES,
+        ),
+        requires={"eval_result.json", "candidate.py"},
+        produces=UPDATE_WRITES,
+    )
+    return Sequential(
+        merge_prompt,
+        merge_generate,
+        eval_step("sandbox_eval"),
+        update,
+        name="autoscientists-merge",
+    )
+
+
+def build_autoscientists_knobs() -> list[OptKnob]:
+    """The knob declarations, for callers that only want the tunables."""
+    return list(KNOBS)
+
+
+def build_autoscientists_memory() -> list[MemoryDeclaration]:
+    """The memory declarations, for callers that only want the namespaces."""
+    return list(MEMORY)
+
+
 def build_autoscientists_workflow() -> Workflow:
-    n = 3
-    scientist_pkgs = [_build_scientist_package(i) for i in range(n)]
-    parallel = Parallel(name="parallel-scientists", children=scientist_pkgs)
-
-    merge_prompt = FnNode(name="merge_prompt", callable_name="srf.ops.autoscientists.ops:build_merge_prompt",
-                          reads={f"scientist_{i}.py" for i in range(n)} | {f"scientist_result_{i}.json" for i in range(n)},
-                          writes={"merge_prompt.md"})
-    merge_gen = LLMNode(name="merge_generate", model="sonnet", temperature=0.7,
-                        system_prompt=MERGE_PROMPT, reads={"merge_prompt.md"}, writes={"candidate.py"})
-    evaluate = FnNode(name="sandbox_eval", callable_name="srf.ops.common.sandbox:run_eval",
-                      reads={"candidate.py", "task.yaml"}, writes={"eval_result.json"})
-    update = FnNode(name="update", callable_name="srf.ops.autoscientists.ops:update_autoscientists",
-                    reads={"eval_result.json", "candidate.py"},
-                    writes={"autoscientists_state.json", "best_solution.py"})
-
-    root = Sequential(name="autoscientists-main",
-                      children=[parallel, merge_prompt, merge_gen, evaluate, update])
-
-    return Workflow(name="autoscientists", root=root,
-                    knobs=build_autoscientists_knobs(), memory=build_autoscientists_memory())
+    """Lower autoscientists to the flat DAG the spine executes."""
+    scientists = Parallel(
+        *[_scientist_package(i) for i in range(N_SCIENTISTS)],
+        name="autoscientists-scientists",
+    )
+    root = Sequential(task_input(), scientists, _merge_package(), name="autoscientists")
+    return compile_mode("autoscientists", declared(root, knobs=KNOBS, memory=MEMORY))

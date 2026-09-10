@@ -1,0 +1,224 @@
+{
+  "name": "openevolve",
+  "nodes": {
+    "task_input": {
+      "id": "task_input",
+      "reads": [],
+      "writes": [
+        "budget_state.json",
+        "eval.py",
+        "initial.py",
+        "knobs.json",
+        "task.yaml"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.task_input",
+      "callable_name": null,
+      "notes": "Materialize the selected task into the work directory.",
+      "_type": "FnNode"
+    },
+    "seed_run": {
+      "id": "seed_run",
+      "reads": [],
+      "writes": [
+        "island_populations.json"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.seed island_populations.json",
+      "callable_name": null,
+      "notes": "Seed the run's population, tree, and per-mode state files.",
+      "_type": "FnNode"
+    },
+    "budget_check": {
+      "id": "budget_check",
+      "reads": [
+        "budget_state.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.common.budget check",
+      "gate_prompt": "reloop while the eval budget is unspent, proceed once it is spent.",
+      "max_iterations": 500,
+      "_type": "GateNode"
+    },
+    "exit_openevolve": {
+      "id": "exit_openevolve",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Loop exit point",
+      "_type": "FnNode"
+    },
+    "sample": {
+      "id": "sample",
+      "reads": [
+        "island_populations.json"
+      ],
+      "writes": [
+        "inspiration.json",
+        "selected_parent.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.openevolve.ops:sample_parent_and_inspiration",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "build_prompt": {
+      "id": "build_prompt",
+      "reads": [
+        "inspiration.json",
+        "selected_parent.json",
+        "task.yaml"
+      ],
+      "writes": [
+        "evolve_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.openevolve.ops:build_evolve_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "generate": {
+      "id": "generate",
+      "reads": [
+        "evolve_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are OpenEvolve, an evolutionary code optimization agent. Given a parent solution and optional inspiration, produce a mutated improvement. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.8,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "sandbox_eval": {
+      "id": "sandbox_eval",
+      "reads": [
+        "candidate.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "Run the task's eval command on the candidate and record the score.",
+      "_type": "FnNode"
+    },
+    "update_island": {
+      "id": "update_island",
+      "reads": [
+        "candidate.py",
+        "eval_result.json",
+        "island_populations.json",
+        "selected_parent.json"
+      ],
+      "writes": [
+        "best_solution.py",
+        "island_populations.json",
+        "openevolve_state.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.openevolve.ops:update_island",
+      "notes": "",
+      "_type": "FnNode"
+    }
+  },
+  "edges": [
+    {
+      "source": "sample",
+      "target": "build_prompt",
+      "condition": null
+    },
+    {
+      "source": "build_prompt",
+      "target": "generate",
+      "condition": null
+    },
+    {
+      "source": "generate",
+      "target": "sandbox_eval",
+      "condition": null
+    },
+    {
+      "source": "sandbox_eval",
+      "target": "update_island",
+      "condition": null
+    },
+    {
+      "source": "update_island",
+      "target": "budget_check",
+      "condition": null
+    },
+    {
+      "source": "budget_check",
+      "target": "sample",
+      "condition": "reloop"
+    },
+    {
+      "source": "budget_check",
+      "target": "exit_openevolve",
+      "condition": "proceed"
+    },
+    {
+      "source": "task_input",
+      "target": "seed_run",
+      "condition": null
+    },
+    {
+      "source": "seed_run",
+      "target": "sample",
+      "condition": null
+    }
+  ],
+  "start_node": "task_input",
+  "terminal": true,
+  "knob_values": {
+    "temperature": 0.8,
+    "n_islands": 3.0,
+    "migration_interval": 10.0,
+    "parent_selection": "best"
+  },
+  "knob_bounds": {
+    "temperature": [
+      0.5,
+      0.7,
+      0.8,
+      0.9,
+      1.0
+    ],
+    "n_islands": [
+      2.0,
+      3.0,
+      5.0
+    ],
+    "migration_interval": [
+      5.0,
+      10.0,
+      20.0
+    ],
+    "parent_selection": [
+      "best",
+      "epsilon_greedy",
+      "power_law",
+      "uniform"
+    ]
+  }
+}

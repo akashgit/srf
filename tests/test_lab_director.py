@@ -1,7 +1,5 @@
 """Tests for Lab Director (#5) and MAP-Elites outer loop (#6)."""
 
-from srf._factory_shim import MockLLMClient
-from srf.lab.director import LabDirector
 from srf.lab.map_elites import (
     ImprovementEmitter,
     MAPElitesCell,
@@ -10,60 +8,6 @@ from srf.lab.map_elites import (
     RandomEmitter,
     compute_features,
 )
-from srf.lab.protocol import LabDirectorProtocol, ModeResult
-
-
-class TestLabDirector:
-    def test_implements_protocol(self):
-        director = LabDirector()
-        assert isinstance(director, LabDirectorProtocol)
-
-    def test_select_mode(self):
-        director = LabDirector()
-        mode = director.select_mode({"name": "test"})
-        assert isinstance(mode, str)
-        assert len(mode) > 0
-
-    def test_compare_results(self):
-        director = LabDirector()
-        from pathlib import Path
-        results = [
-            ModeResult(score=0.5, best_code="a", trace_path=Path("."), cost=0.0),
-            ModeResult(score=0.8, best_code="b", trace_path=Path("."), cost=0.0),
-            ModeResult(score=0.3, best_code="c", trace_path=Path("."), cost=0.0),
-        ]
-        winner = director.compare_results(results)
-        assert winner.score == 0.8
-
-    def test_compare_empty(self):
-        director = LabDirector()
-        winner = director.compare_results([])
-        assert winner.score == 0.0
-
-    def test_run_mode_unknown(self):
-        director = LabDirector()
-        result = director.run_mode("nonexistent", {"name": "test"}, 10)
-        assert result.score == 0.0
-
-    def test_run_lab(self):
-        director = LabDirector(llm_client=MockLLMClient())
-        report = director.run_lab("circle_packing", ["gepa"], 10)
-        assert "task" in report
-        assert report["task"] == "circle_packing"
-        assert "modes" in report
-        assert "gepa" in report["modes"]
-
-    def test_run_lab_unknown_task(self):
-        director = LabDirector()
-        report = director.run_lab("nonexistent", ["gepa"], 10)
-        assert "error" in report
-
-    def test_error_isolation(self):
-        director = LabDirector(llm_client=MockLLMClient())
-        # Even if one mode has issues, the lab should not crash
-        report = director.run_lab("circle_packing", ["gepa", "nonexistent_mode"], 20)
-        # Should complete without exception
-        assert "modes" in report
 
 
 class TestMAPElitesGrid:
@@ -156,14 +100,3 @@ class TestComputeFeatures:
         assert features[2] == 2  # high budget
 
 
-class TestCLISubcommands:
-    def test_lab_command_parses(self):
-        from srf.cli import main
-        # Just test that the CLI doesn't crash with --mock-llm
-        result = main(["lab", "--task", "circle_packing", "--modes", "gepa", "--budget", "5", "--mock-llm"])
-        assert result == 0
-
-    def test_evolve_command_parses(self):
-        from srf.cli import main
-        result = main(["evolve", "--task", "circle_packing", "--generations", "2", "--budget", "10", "--mock-llm"])
-        assert result == 0

@@ -1,26 +1,42 @@
-"""GEPA mode — faithful Package implementation.
+"""GEPA mode — reflective evolution with a merge branch.
 
-DAG structure:
-  Loop(body=Sequential(Conditional(merge_gate, {PROCEED: mutate_pkg, RELOOP: merge_pkg}), eval_pkg),
-       gate=budget_gate, max_iterations=500)
+Graph:
+  task_input → seed_run → Loop:
+    merge_decision ──mutate──▶ select_parent → build_reflective_prompt → generate_code
+                   ──merge───▶ find_merge_candidates → build_merge_prompt → generate_merge
+                              │
+                              ▼
+                   sandbox_eval → accept_or_reject
+                              │
+                              ▼
+                        budget_check ──reloop──▶ merge_decision
+                                      ──proceed─▶ exit
+
+``merge_decision`` is a switch, not a rewind: both outcomes continue the same
+iteration along different branches.
 """
 
 from __future__ import annotations
 
-from srf._factory_shim import (
+from factory.workflow.primitives import Workflow
+
+from srf.packaging import (
     Conditional,
-    Edge,
-    FnNode,
-    GateNode,
-    LLMNode,
-    Loop,
-    MemoryDeclaration,
-    OptKnob,
-    Package,
-    Port,
     Sequential,
-    StateContract,
-    Workflow,
+    budget_gate,
+    chain,
+    compile_mode,
+    declared,
+    gate,
+    knob,
+    llm,
+    loop,
+    memory,
+    op,
+    port,
+    seed_run,
+    single,
+    task_input,
 )
 
 SYSTEM_PROMPT_GENERATE = (
@@ -35,199 +51,196 @@ SYSTEM_PROMPT_MERGE = (
     "Output a single fenced code block."
 )
 
+ACCEPT_WRITES = {
+    "population.json",
+    "genealogy.json",
+    "rejection_history.json",
+    "accepted_history.json",
+    "gepa_state.json",
+    "best_solution.py",
+}
 
-def build_gepa_knobs() -> list[OptKnob]:
-    return [
-        OptKnob(
-            name="temperature",
-            kind="threshold",
-            default=0.7,
-            bounds=[0.3, 0.5, 0.7, 0.9, 1.0],
-            node_id="generate_code",
-            description="LLM sampling temperature",
-        ),
-        OptKnob(
-            name="parent_selection",
-            kind="prompt",
-            default="best",
-            bounds=["best", "pareto", "epsilon_greedy"],
-            node_id="select_parent",
-            description="How parents are chosen for mutation",
-        ),
-        OptKnob(
-            name="max_rejection_context",
-            kind="threshold",
-            default=5.0,
-            bounds=[3.0, 5.0, 8.0, 12.0],
-            node_id="build_reflective_prompt",
-            description="Rejected attempts shown in reflective prompt",
-        ),
-        OptKnob(
-            name="merge_stagnation_threshold",
-            kind="threshold",
-            default=15.0,
-            bounds=[5.0, 10.0, 15.0, 20.0, 30.0],
-            node_id="find_merge_candidates",
-            description="Iterations without improvement before merge triggers",
-        ),
-        OptKnob(
-            name="acceptance_mode",
-            kind="prompt",
-            default="strict",
-            bounds=["strict", "lenient", "off"],
-            node_id="accept_or_reject",
-            description="How strict the acceptance gate is",
-        ),
-    ]
+KNOBS = [
+    knob(
+        "temperature",
+        "threshold",
+        0.7,
+        [0.3, 0.5, 0.7, 0.9, 1.0],
+        "generate_code",
+        "LLM sampling temperature",
+    ),
+    knob(
+        "parent_selection",
+        "prompt",
+        "best",
+        ["best", "pareto", "epsilon_greedy"],
+        "select_parent",
+        "How parents are chosen for mutation",
+    ),
+    knob(
+        "max_rejection_context",
+        "threshold",
+        5.0,
+        [3.0, 5.0, 8.0, 12.0],
+        "build_reflective_prompt",
+        "Rejected attempts shown in reflective prompt",
+    ),
+    knob(
+        "merge_stagnation_threshold",
+        "threshold",
+        15.0,
+        [5.0, 10.0, 15.0, 20.0, 30.0],
+        "find_merge_candidates",
+        "Iterations without improvement before merge triggers",
+    ),
+    knob(
+        "acceptance_mode",
+        "prompt",
+        "strict",
+        ["strict", "lenient", "off"],
+        "accept_or_reject",
+        "How strict the acceptance gate is",
+    ),
+]
+
+SEEDS = (
+    "population.json",
+    "genealogy.json",
+    "rejection_history.json",
+    "accepted_history.json",
+    "gepa_state.json",
+    "best_solution.py",
+)
+
+MEMORY = [
+    memory("gepa.population", "kv"),
+    memory("gepa.genealogy", "graph"),
+    memory("gepa.rejections", "log"),
+]
 
 
-def build_gepa_memory() -> list[MemoryDeclaration]:
-    return [
-        MemoryDeclaration(namespace="gepa.population", kind="kv", retention="run"),
-        MemoryDeclaration(namespace="gepa.genealogy", kind="graph", retention="run"),
-        MemoryDeclaration(namespace="gepa.rejections", kind="log", retention="run"),
-    ]
-
-
-def build_mutate_package() -> Package:
-    select_parent = FnNode(
-        name="select_parent",
-        callable_name="srf.ops.gepa.population:select_parent",
+def _mutate_package():
+    """One mutation of a selected parent, conditioned on the rejection history."""
+    select_parent = op(
+        "select_parent",
+        "srf.ops.gepa.population:select_parent",
         reads={"population.json", "gepa_state.json"},
         writes={"selected_parent.json"},
     )
-    build_reflective = FnNode(
-        name="build_reflective_prompt",
-        callable_name="srf.ops.gepa.prompts:build_reflective_prompt",
-        reads={"selected_parent.json", "rejection_history.json", "accepted_history.json", "task.yaml"},
+    build_reflective = op(
+        "build_reflective_prompt",
+        "srf.ops.gepa.prompts:build_reflective_prompt",
+        reads={
+            "selected_parent.json",
+            "rejection_history.json",
+            "accepted_history.json",
+            "task.yaml",
+        },
         writes={"mutate_prompt.md"},
     )
-    generate_code = LLMNode(
-        name="generate_code",
-        model="sonnet",
+    generate_code = llm(
+        "generate_code",
+        SYSTEM_PROMPT_GENERATE,
         temperature=0.7,
-        system_prompt=SYSTEM_PROMPT_GENERATE,
         reads={"mutate_prompt.md"},
         writes={"candidate.py"},
     )
-    return Package(
-        name="gepa-mutate",
-        nodes=[select_parent, build_reflective, generate_code],
-        edges=[
-            Edge(source="select_parent", target="build_reflective_prompt"),
-            Edge(source="build_reflective_prompt", target="generate_code"),
-        ],
-        inputs=[Port("population", "population.json")],
-        outputs=[Port("candidate", "candidate.py")],
-        state_contract=StateContract(
-            requires={"population.json", "task.yaml"},
-            produces={"candidate.py"},
-        ),
+    return chain(
+        "gepa-mutate",
+        [select_parent, build_reflective, generate_code],
+        inputs=[port("population", "population.json", "application/json")],
+        outputs=[port("candidate", "candidate.py", "text/x-python")],
+        requires={"population.json", "task.yaml"},
+        produces={"candidate.py"},
     )
 
 
-def build_merge_package() -> Package:
-    find_merge = FnNode(
-        name="find_merge_candidates",
-        callable_name="srf.ops.gepa.merge:find_triplet_or_top2",
+def _merge_package():
+    """One merge of the best programs — the stagnation-escape branch."""
+    find_merge = op(
+        "find_merge_candidates",
+        "srf.ops.gepa.merge:find_triplet_or_top2",
         reads={"population.json", "genealogy.json"},
         writes={"merge_candidates.json"},
     )
-    build_merge = FnNode(
-        name="build_merge_prompt",
-        callable_name="srf.ops.gepa.prompts:build_merge_prompt",
+    build_merge = op(
+        "build_merge_prompt",
+        "srf.ops.gepa.prompts:build_merge_prompt",
         reads={"merge_candidates.json", "task.yaml"},
         writes={"merge_prompt.md"},
     )
-    generate_merge = LLMNode(
-        name="generate_merge",
-        model="sonnet",
+    generate_merge = llm(
+        "generate_merge",
+        SYSTEM_PROMPT_MERGE,
         temperature=0.7,
-        system_prompt=SYSTEM_PROMPT_MERGE,
         reads={"merge_prompt.md"},
         writes={"candidate.py"},
     )
-    return Package(
-        name="gepa-merge",
-        nodes=[find_merge, build_merge, generate_merge],
-        edges=[
-            Edge(source="find_merge_candidates", target="build_merge_prompt"),
-            Edge(source="build_merge_prompt", target="generate_merge"),
-        ],
-        inputs=[Port("population", "population.json")],
-        outputs=[Port("candidate", "candidate.py")],
-        state_contract=StateContract(
-            requires={"population.json", "genealogy.json", "task.yaml"},
-            produces={"candidate.py"},
-        ),
+    return chain(
+        "gepa-merge",
+        [find_merge, build_merge, generate_merge],
+        inputs=[port("population", "population.json", "application/json")],
+        outputs=[port("candidate", "candidate.py", "text/x-python")],
+        requires={"population.json", "genealogy.json", "task.yaml"},
+        produces={"candidate.py"},
     )
 
 
-def build_eval_package() -> Package:
-    sandbox_eval = FnNode(
-        name="sandbox_eval",
-        callable_name="srf.ops.common.sandbox:run_eval",
+def _eval_package():
+    """Score the candidate, then accept or reject it into the population."""
+    sandbox_eval = op(
+        "sandbox_eval",
+        "srf.ops.common.sandbox:run_eval",
         reads={"candidate.py", "task.yaml"},
         writes={"eval_result.json"},
     )
-    accept = FnNode(
-        name="accept_or_reject",
-        callable_name="srf.ops.gepa.acceptance:accept_or_reject",
-        reads={"eval_result.json", "candidate.py", "selected_parent.json",
-               "population.json", "genealogy.json", "gepa_state.json"},
-        writes={"population.json", "genealogy.json", "rejection_history.json",
-                "accepted_history.json", "gepa_state.json", "best_solution.py"},
+    accept = op(
+        "accept_or_reject",
+        "srf.ops.gepa.acceptance:accept_or_reject",
+        reads={
+            "eval_result.json",
+            "candidate.py",
+            "selected_parent.json",
+            "population.json",
+            "genealogy.json",
+            "gepa_state.json",
+        },
+        writes=ACCEPT_WRITES,
     )
-    return Package(
-        name="gepa-eval",
-        nodes=[sandbox_eval, accept],
-        edges=[Edge(source="sandbox_eval", target="accept_or_reject")],
-        inputs=[Port("candidate", "candidate.py")],
-        outputs=[Port("result", "eval_result.json")],
-        state_contract=StateContract(
-            requires={"candidate.py", "task.yaml"},
-            produces={"eval_result.json", "best_solution.py"},
-        ),
+    return chain(
+        "gepa-eval",
+        [sandbox_eval, accept],
+        inputs=[port("candidate", "candidate.py", "text/x-python")],
+        outputs=[port("result", "eval_result.json", "application/json")],
+        requires={"candidate.py", "task.yaml"},
+        produces=ACCEPT_WRITES | {"eval_result.json"},
     )
+
+
+def build_gepa_knobs():
+    """The knob declarations, for callers that only want the tunables."""
+    return list(KNOBS)
+
+
+def build_gepa_memory():
+    """The memory declarations, for callers that only want the namespaces."""
+    return list(MEMORY)
 
 
 def build_gepa_workflow() -> Workflow:
-    """Build the complete GEPA workflow as specified in the design doc."""
-    mutate_pkg = build_mutate_package()
-    merge_pkg = build_merge_package()
-    eval_pkg = build_eval_package()
-
-    merge_gate = GateNode(
-        name="merge_decision",
-        evaluator_command="python -m srf.ops.gepa.decision should_merge",
+    """Lower gepa to the flat DAG the spine executes."""
+    decision = gate(
+        "merge_decision",
+        "python -m srf.ops.gepa.decision should_merge",
+        reads={"gepa_state.json", "population.json"},
+        gate_prompt="mutate the selected parent, or merge the best programs.",
     )
-
-    budget_gate = GateNode(
-        name="budget_check",
-        evaluator_command="python -m srf.ops.common.budget check",
-    )
-
-    action_pkg = Conditional(
+    action = Conditional(
+        decision,
+        {"mutate": _mutate_package(), "merge": _merge_package()},
         name="gepa-action",
-        gate=merge_gate,
-        branches={"PROCEED": mutate_pkg, "RELOOP": merge_pkg},
     )
-
-    iteration = Sequential(
-        name="gepa-iteration",
-        children=[action_pkg, eval_pkg],
-    )
-
-    gepa_loop = Loop(
-        name="gepa",
-        body=iteration,
-        gate=budget_gate,
-        max_iterations=500,
-    )
-
-    return Workflow(
-        name="gepa",
-        root=gepa_loop,
-        knobs=build_gepa_knobs(),
-        memory=build_gepa_memory(),
-    )
+    iteration = Sequential(action, _eval_package(), name="gepa-iteration")
+    study = loop(iteration, budget_gate(), name="gepa")
+    root = Sequential(task_input(), seed_run(SEEDS), study, name="gepa")
+    return compile_mode("gepa", declared(root, knobs=KNOBS, memory=MEMORY))

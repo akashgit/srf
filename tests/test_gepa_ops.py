@@ -143,30 +143,32 @@ class TestFindMergeCandidates:
 
 
 class TestShouldMerge:
-    def test_no_stagnation_returns_proceed(self):
+    """The gate names its own forward outcomes: mutate or merge, never reloop."""
+
+    def test_no_stagnation_returns_mutate(self):
         state = GEPAState(stagnation_counter=0, use_merge=True)
         decision, _ = _decide(state, {"a": {}, "b": {}}, 15)
-        assert decision == "PROCEED"
+        assert decision == "mutate"
 
     def test_stagnation_triggers_merge(self):
         state = GEPAState(stagnation_counter=15, use_merge=True)
         decision, _ = _decide(state, {"a": {}, "b": {}}, 15)
-        assert decision == "RELOOP"
+        assert decision == "merge"
 
     def test_merge_disabled(self):
         state = GEPAState(stagnation_counter=100, use_merge=False)
         decision, _ = _decide(state, {"a": {}, "b": {}}, 15)
-        assert decision == "PROCEED"
+        assert decision == "mutate"
 
     def test_population_too_small(self):
         state = GEPAState(stagnation_counter=20, use_merge=True)
         decision, _ = _decide(state, {"a": {}}, 15)
-        assert decision == "PROCEED"
+        assert decision == "mutate"
 
     def test_merge_attempts_exhausted(self):
         state = GEPAState(stagnation_counter=20, use_merge=True, merge_attempts=5)
         decision, _ = _decide(state, {"a": {}, "b": {}}, 15)
-        assert decision == "PROCEED"
+        assert decision == "mutate"
 
 
 class TestAcceptOrReject:

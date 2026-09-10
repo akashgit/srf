@@ -1,0 +1,1282 @@
+{
+  "name": "ai_sci_v2",
+  "nodes": {
+    "task_input": {
+      "id": "task_input",
+      "reads": [],
+      "writes": [
+        "budget_state.json",
+        "eval.py",
+        "initial.py",
+        "knobs.json",
+        "task.yaml"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.task_input",
+      "callable_name": null,
+      "notes": "Materialize the selected task into the work directory.",
+      "_type": "FnNode"
+    },
+    "seed_run": {
+      "id": "seed_run",
+      "reads": [],
+      "writes": [
+        "ai_sci_state.json",
+        "aide_state.json",
+        "tree_state.json"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.seed ai_sci_state.json aide_state.json tree_state.json",
+      "callable_name": null,
+      "notes": "Seed the run's population, tree, and per-mode state files.",
+      "_type": "FnNode"
+    },
+    "budget_initial": {
+      "id": "budget_initial",
+      "reads": [
+        "budget_state.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.common.budget check",
+      "gate_prompt": "reloop while the eval budget is unspent, proceed once it is spent.",
+      "max_iterations": 500,
+      "_type": "GateNode"
+    },
+    "exit_ai_sci_v2-stage-initial": {
+      "id": "exit_ai_sci_v2-stage-initial",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Loop exit point",
+      "_type": "FnNode"
+    },
+    "policy_initial": {
+      "id": "policy_initial",
+      "reads": [
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_action.txt",
+        "aide_target.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:search_policy",
+      "notes": "Score the tree and pick the stage's next action.",
+      "_type": "FnNode"
+    },
+    "action_gate_initial": {
+      "id": "action_gate_initial",
+      "reads": [
+        "aide_action.txt"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.aide.gate action",
+      "gate_prompt": "draft a new solution, improve the best node, or debug a buggy node.",
+      "max_iterations": null,
+      "_type": "GateNode"
+    },
+    "join_ai_sci_v2-action-initial": {
+      "id": "join_ai_sci_v2-action-initial",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Conditional join point",
+      "_type": "FnNode"
+    },
+    "draft_prompt_initial": {
+      "id": "draft_prompt_initial",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_draft_prompt",
+      "notes": "Prompt with the task header and its initial code.",
+      "_type": "FnNode"
+    },
+    "draft_gen_initial": {
+      "id": "draft_gen_initial",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AI Scientist V2 in the INITIAL IMPLEMENTATION stage. Produce a working solution.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "improve_prompt_initial": {
+      "id": "improve_prompt_initial",
+      "reads": [
+        "aide_target.json",
+        "task.yaml",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_improve_prompt",
+      "notes": "Prompt with the target node's code and its search path.",
+      "_type": "FnNode"
+    },
+    "improve_gen_initial": {
+      "id": "improve_gen_initial",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AI Scientist V2 in the INITIAL IMPLEMENTATION stage. Produce a working solution.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "debug_prompt_initial": {
+      "id": "debug_prompt_initial",
+      "reads": [
+        "aide_target.json",
+        "task.yaml",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_debug_prompt",
+      "notes": "Prompt with the buggy node's code and its error output.",
+      "_type": "FnNode"
+    },
+    "debug_gen_initial": {
+      "id": "debug_gen_initial",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "Fix bugs in the solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.5,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "eval_initial": {
+      "id": "eval_initial",
+      "reads": [
+        "candidate.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "Run the task's eval command on the candidate and record the score.",
+      "_type": "FnNode"
+    },
+    "tree_update_initial": {
+      "id": "tree_update_initial",
+      "reads": [
+        "aide_target.json",
+        "candidate.py",
+        "eval_result.json",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_state.json",
+        "best_solution.py",
+        "tree_state.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:update_tree",
+      "notes": "Add the candidate to the tree and promote it when it scores best.",
+      "_type": "FnNode"
+    },
+    "transition_0": {
+      "id": "transition_0",
+      "reads": [
+        "ai_sci_state.json"
+      ],
+      "writes": [
+        "ai_sci_state.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.ai_sci.ops:stage_transition",
+      "notes": "Close the finished stage and open the next one.",
+      "_type": "FnNode"
+    },
+    "budget_tuning": {
+      "id": "budget_tuning",
+      "reads": [
+        "budget_state.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.common.budget check",
+      "gate_prompt": "reloop while the eval budget is unspent, proceed once it is spent.",
+      "max_iterations": 500,
+      "_type": "GateNode"
+    },
+    "exit_ai_sci_v2-stage-tuning": {
+      "id": "exit_ai_sci_v2-stage-tuning",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Loop exit point",
+      "_type": "FnNode"
+    },
+    "policy_tuning": {
+      "id": "policy_tuning",
+      "reads": [
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_action.txt",
+        "aide_target.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:search_policy",
+      "notes": "Score the tree and pick the stage's next action.",
+      "_type": "FnNode"
+    },
+    "action_gate_tuning": {
+      "id": "action_gate_tuning",
+      "reads": [
+        "aide_action.txt"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.aide.gate action",
+      "gate_prompt": "draft a new solution, improve the best node, or debug a buggy node.",
+      "max_iterations": null,
+      "_type": "GateNode"
+    },
+    "join_ai_sci_v2-action-tuning": {
+      "id": "join_ai_sci_v2-action-tuning",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Conditional join point",
+      "_type": "FnNode"
+    },
+    "draft_prompt_tuning": {
+      "id": "draft_prompt_tuning",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_draft_prompt",
+      "notes": "Prompt with the task header and its initial code.",
+      "_type": "FnNode"
+    },
+    "draft_gen_tuning": {
+      "id": "draft_gen_tuning",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AI Scientist V2 in the BASELINE TUNING stage. Optimize parameters and performance.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "improve_prompt_tuning": {
+      "id": "improve_prompt_tuning",
+      "reads": [
+        "aide_target.json",
+        "task.yaml",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_improve_prompt",
+      "notes": "Prompt with the target node's code and its search path.",
+      "_type": "FnNode"
+    },
+    "improve_gen_tuning": {
+      "id": "improve_gen_tuning",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AI Scientist V2 in the BASELINE TUNING stage. Optimize parameters and performance.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "debug_prompt_tuning": {
+      "id": "debug_prompt_tuning",
+      "reads": [
+        "aide_target.json",
+        "task.yaml",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_debug_prompt",
+      "notes": "Prompt with the buggy node's code and its error output.",
+      "_type": "FnNode"
+    },
+    "debug_gen_tuning": {
+      "id": "debug_gen_tuning",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "Fix bugs in the solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.5,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "eval_tuning": {
+      "id": "eval_tuning",
+      "reads": [
+        "candidate.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "Run the task's eval command on the candidate and record the score.",
+      "_type": "FnNode"
+    },
+    "tree_update_tuning": {
+      "id": "tree_update_tuning",
+      "reads": [
+        "aide_target.json",
+        "candidate.py",
+        "eval_result.json",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_state.json",
+        "best_solution.py",
+        "tree_state.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:update_tree",
+      "notes": "Add the candidate to the tree and promote it when it scores best.",
+      "_type": "FnNode"
+    },
+    "transition_1": {
+      "id": "transition_1",
+      "reads": [
+        "ai_sci_state.json"
+      ],
+      "writes": [
+        "ai_sci_state.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.ai_sci.ops:stage_transition",
+      "notes": "Close the finished stage and open the next one.",
+      "_type": "FnNode"
+    },
+    "budget_creative": {
+      "id": "budget_creative",
+      "reads": [
+        "budget_state.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.common.budget check",
+      "gate_prompt": "reloop while the eval budget is unspent, proceed once it is spent.",
+      "max_iterations": 500,
+      "_type": "GateNode"
+    },
+    "exit_ai_sci_v2-stage-creative": {
+      "id": "exit_ai_sci_v2-stage-creative",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Loop exit point",
+      "_type": "FnNode"
+    },
+    "policy_creative": {
+      "id": "policy_creative",
+      "reads": [
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_action.txt",
+        "aide_target.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:search_policy",
+      "notes": "Score the tree and pick the stage's next action.",
+      "_type": "FnNode"
+    },
+    "action_gate_creative": {
+      "id": "action_gate_creative",
+      "reads": [
+        "aide_action.txt"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.aide.gate action",
+      "gate_prompt": "draft a new solution, improve the best node, or debug a buggy node.",
+      "max_iterations": null,
+      "_type": "GateNode"
+    },
+    "join_ai_sci_v2-action-creative": {
+      "id": "join_ai_sci_v2-action-creative",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Conditional join point",
+      "_type": "FnNode"
+    },
+    "draft_prompt_creative": {
+      "id": "draft_prompt_creative",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_draft_prompt",
+      "notes": "Prompt with the task header and its initial code.",
+      "_type": "FnNode"
+    },
+    "draft_gen_creative": {
+      "id": "draft_gen_creative",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AI Scientist V2 in the CREATIVE RESEARCH stage. Try novel approaches.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "improve_prompt_creative": {
+      "id": "improve_prompt_creative",
+      "reads": [
+        "aide_target.json",
+        "task.yaml",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_improve_prompt",
+      "notes": "Prompt with the target node's code and its search path.",
+      "_type": "FnNode"
+    },
+    "improve_gen_creative": {
+      "id": "improve_gen_creative",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AI Scientist V2 in the CREATIVE RESEARCH stage. Try novel approaches.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "debug_prompt_creative": {
+      "id": "debug_prompt_creative",
+      "reads": [
+        "aide_target.json",
+        "task.yaml",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_debug_prompt",
+      "notes": "Prompt with the buggy node's code and its error output.",
+      "_type": "FnNode"
+    },
+    "debug_gen_creative": {
+      "id": "debug_gen_creative",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "Fix bugs in the solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.5,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "eval_creative": {
+      "id": "eval_creative",
+      "reads": [
+        "candidate.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "Run the task's eval command on the candidate and record the score.",
+      "_type": "FnNode"
+    },
+    "tree_update_creative": {
+      "id": "tree_update_creative",
+      "reads": [
+        "aide_target.json",
+        "candidate.py",
+        "eval_result.json",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_state.json",
+        "best_solution.py",
+        "tree_state.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:update_tree",
+      "notes": "Add the candidate to the tree and promote it when it scores best.",
+      "_type": "FnNode"
+    },
+    "transition_2": {
+      "id": "transition_2",
+      "reads": [
+        "ai_sci_state.json"
+      ],
+      "writes": [
+        "ai_sci_state.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.ai_sci.ops:stage_transition",
+      "notes": "Close the finished stage and open the next one.",
+      "_type": "FnNode"
+    },
+    "budget_ablation": {
+      "id": "budget_ablation",
+      "reads": [
+        "budget_state.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.common.budget check",
+      "gate_prompt": "reloop while the eval budget is unspent, proceed once it is spent.",
+      "max_iterations": 500,
+      "_type": "GateNode"
+    },
+    "exit_ai_sci_v2-stage-ablation": {
+      "id": "exit_ai_sci_v2-stage-ablation",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Loop exit point",
+      "_type": "FnNode"
+    },
+    "policy_ablation": {
+      "id": "policy_ablation",
+      "reads": [
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_action.txt",
+        "aide_target.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:search_policy",
+      "notes": "Score the tree and pick the stage's next action.",
+      "_type": "FnNode"
+    },
+    "action_gate_ablation": {
+      "id": "action_gate_ablation",
+      "reads": [
+        "aide_action.txt"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.aide.gate action",
+      "gate_prompt": "draft a new solution, improve the best node, or debug a buggy node.",
+      "max_iterations": null,
+      "_type": "GateNode"
+    },
+    "join_ai_sci_v2-action-ablation": {
+      "id": "join_ai_sci_v2-action-ablation",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Conditional join point",
+      "_type": "FnNode"
+    },
+    "draft_prompt_ablation": {
+      "id": "draft_prompt_ablation",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_draft_prompt",
+      "notes": "Prompt with the task header and its initial code.",
+      "_type": "FnNode"
+    },
+    "draft_gen_ablation": {
+      "id": "draft_gen_ablation",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AI Scientist V2 in the ABLATION STUDIES stage. Verify which components matter.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "improve_prompt_ablation": {
+      "id": "improve_prompt_ablation",
+      "reads": [
+        "aide_target.json",
+        "task.yaml",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_improve_prompt",
+      "notes": "Prompt with the target node's code and its search path.",
+      "_type": "FnNode"
+    },
+    "improve_gen_ablation": {
+      "id": "improve_gen_ablation",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AI Scientist V2 in the ABLATION STUDIES stage. Verify which components matter.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "debug_prompt_ablation": {
+      "id": "debug_prompt_ablation",
+      "reads": [
+        "aide_target.json",
+        "task.yaml",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:build_debug_prompt",
+      "notes": "Prompt with the buggy node's code and its error output.",
+      "_type": "FnNode"
+    },
+    "debug_gen_ablation": {
+      "id": "debug_gen_ablation",
+      "reads": [
+        "aide_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "Fix bugs in the solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.5,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "eval_ablation": {
+      "id": "eval_ablation",
+      "reads": [
+        "candidate.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "Run the task's eval command on the candidate and record the score.",
+      "_type": "FnNode"
+    },
+    "tree_update_ablation": {
+      "id": "tree_update_ablation",
+      "reads": [
+        "aide_target.json",
+        "candidate.py",
+        "eval_result.json",
+        "tree_state.json"
+      ],
+      "writes": [
+        "aide_state.json",
+        "best_solution.py",
+        "tree_state.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.aide.ops:update_tree",
+      "notes": "Add the candidate to the tree and promote it when it scores best.",
+      "_type": "FnNode"
+    }
+  },
+  "edges": [
+    {
+      "source": "draft_prompt_initial",
+      "target": "draft_gen_initial",
+      "condition": null
+    },
+    {
+      "source": "action_gate_initial",
+      "target": "draft_prompt_initial",
+      "condition": "draft"
+    },
+    {
+      "source": "draft_gen_initial",
+      "target": "join_ai_sci_v2-action-initial",
+      "condition": null
+    },
+    {
+      "source": "improve_prompt_initial",
+      "target": "improve_gen_initial",
+      "condition": null
+    },
+    {
+      "source": "action_gate_initial",
+      "target": "improve_prompt_initial",
+      "condition": "improve"
+    },
+    {
+      "source": "improve_gen_initial",
+      "target": "join_ai_sci_v2-action-initial",
+      "condition": null
+    },
+    {
+      "source": "debug_prompt_initial",
+      "target": "debug_gen_initial",
+      "condition": null
+    },
+    {
+      "source": "action_gate_initial",
+      "target": "debug_prompt_initial",
+      "condition": "debug"
+    },
+    {
+      "source": "debug_gen_initial",
+      "target": "join_ai_sci_v2-action-initial",
+      "condition": null
+    },
+    {
+      "source": "policy_initial",
+      "target": "action_gate_initial",
+      "condition": null
+    },
+    {
+      "source": "join_ai_sci_v2-action-initial",
+      "target": "eval_initial",
+      "condition": null
+    },
+    {
+      "source": "eval_initial",
+      "target": "tree_update_initial",
+      "condition": null
+    },
+    {
+      "source": "tree_update_initial",
+      "target": "budget_initial",
+      "condition": null
+    },
+    {
+      "source": "budget_initial",
+      "target": "policy_initial",
+      "condition": "reloop"
+    },
+    {
+      "source": "budget_initial",
+      "target": "exit_ai_sci_v2-stage-initial",
+      "condition": "proceed"
+    },
+    {
+      "source": "draft_prompt_tuning",
+      "target": "draft_gen_tuning",
+      "condition": null
+    },
+    {
+      "source": "action_gate_tuning",
+      "target": "draft_prompt_tuning",
+      "condition": "draft"
+    },
+    {
+      "source": "draft_gen_tuning",
+      "target": "join_ai_sci_v2-action-tuning",
+      "condition": null
+    },
+    {
+      "source": "improve_prompt_tuning",
+      "target": "improve_gen_tuning",
+      "condition": null
+    },
+    {
+      "source": "action_gate_tuning",
+      "target": "improve_prompt_tuning",
+      "condition": "improve"
+    },
+    {
+      "source": "improve_gen_tuning",
+      "target": "join_ai_sci_v2-action-tuning",
+      "condition": null
+    },
+    {
+      "source": "debug_prompt_tuning",
+      "target": "debug_gen_tuning",
+      "condition": null
+    },
+    {
+      "source": "action_gate_tuning",
+      "target": "debug_prompt_tuning",
+      "condition": "debug"
+    },
+    {
+      "source": "debug_gen_tuning",
+      "target": "join_ai_sci_v2-action-tuning",
+      "condition": null
+    },
+    {
+      "source": "policy_tuning",
+      "target": "action_gate_tuning",
+      "condition": null
+    },
+    {
+      "source": "join_ai_sci_v2-action-tuning",
+      "target": "eval_tuning",
+      "condition": null
+    },
+    {
+      "source": "eval_tuning",
+      "target": "tree_update_tuning",
+      "condition": null
+    },
+    {
+      "source": "tree_update_tuning",
+      "target": "budget_tuning",
+      "condition": null
+    },
+    {
+      "source": "budget_tuning",
+      "target": "policy_tuning",
+      "condition": "reloop"
+    },
+    {
+      "source": "budget_tuning",
+      "target": "exit_ai_sci_v2-stage-tuning",
+      "condition": "proceed"
+    },
+    {
+      "source": "draft_prompt_creative",
+      "target": "draft_gen_creative",
+      "condition": null
+    },
+    {
+      "source": "action_gate_creative",
+      "target": "draft_prompt_creative",
+      "condition": "draft"
+    },
+    {
+      "source": "draft_gen_creative",
+      "target": "join_ai_sci_v2-action-creative",
+      "condition": null
+    },
+    {
+      "source": "improve_prompt_creative",
+      "target": "improve_gen_creative",
+      "condition": null
+    },
+    {
+      "source": "action_gate_creative",
+      "target": "improve_prompt_creative",
+      "condition": "improve"
+    },
+    {
+      "source": "improve_gen_creative",
+      "target": "join_ai_sci_v2-action-creative",
+      "condition": null
+    },
+    {
+      "source": "debug_prompt_creative",
+      "target": "debug_gen_creative",
+      "condition": null
+    },
+    {
+      "source": "action_gate_creative",
+      "target": "debug_prompt_creative",
+      "condition": "debug"
+    },
+    {
+      "source": "debug_gen_creative",
+      "target": "join_ai_sci_v2-action-creative",
+      "condition": null
+    },
+    {
+      "source": "policy_creative",
+      "target": "action_gate_creative",
+      "condition": null
+    },
+    {
+      "source": "join_ai_sci_v2-action-creative",
+      "target": "eval_creative",
+      "condition": null
+    },
+    {
+      "source": "eval_creative",
+      "target": "tree_update_creative",
+      "condition": null
+    },
+    {
+      "source": "tree_update_creative",
+      "target": "budget_creative",
+      "condition": null
+    },
+    {
+      "source": "budget_creative",
+      "target": "policy_creative",
+      "condition": "reloop"
+    },
+    {
+      "source": "budget_creative",
+      "target": "exit_ai_sci_v2-stage-creative",
+      "condition": "proceed"
+    },
+    {
+      "source": "draft_prompt_ablation",
+      "target": "draft_gen_ablation",
+      "condition": null
+    },
+    {
+      "source": "action_gate_ablation",
+      "target": "draft_prompt_ablation",
+      "condition": "draft"
+    },
+    {
+      "source": "draft_gen_ablation",
+      "target": "join_ai_sci_v2-action-ablation",
+      "condition": null
+    },
+    {
+      "source": "improve_prompt_ablation",
+      "target": "improve_gen_ablation",
+      "condition": null
+    },
+    {
+      "source": "action_gate_ablation",
+      "target": "improve_prompt_ablation",
+      "condition": "improve"
+    },
+    {
+      "source": "improve_gen_ablation",
+      "target": "join_ai_sci_v2-action-ablation",
+      "condition": null
+    },
+    {
+      "source": "debug_prompt_ablation",
+      "target": "debug_gen_ablation",
+      "condition": null
+    },
+    {
+      "source": "action_gate_ablation",
+      "target": "debug_prompt_ablation",
+      "condition": "debug"
+    },
+    {
+      "source": "debug_gen_ablation",
+      "target": "join_ai_sci_v2-action-ablation",
+      "condition": null
+    },
+    {
+      "source": "policy_ablation",
+      "target": "action_gate_ablation",
+      "condition": null
+    },
+    {
+      "source": "join_ai_sci_v2-action-ablation",
+      "target": "eval_ablation",
+      "condition": null
+    },
+    {
+      "source": "eval_ablation",
+      "target": "tree_update_ablation",
+      "condition": null
+    },
+    {
+      "source": "tree_update_ablation",
+      "target": "budget_ablation",
+      "condition": null
+    },
+    {
+      "source": "budget_ablation",
+      "target": "policy_ablation",
+      "condition": "reloop"
+    },
+    {
+      "source": "budget_ablation",
+      "target": "exit_ai_sci_v2-stage-ablation",
+      "condition": "proceed"
+    },
+    {
+      "source": "task_input",
+      "target": "seed_run",
+      "condition": null
+    },
+    {
+      "source": "seed_run",
+      "target": "policy_initial",
+      "condition": null
+    },
+    {
+      "source": "exit_ai_sci_v2-stage-initial",
+      "target": "transition_0",
+      "condition": null
+    },
+    {
+      "source": "transition_0",
+      "target": "policy_tuning",
+      "condition": null
+    },
+    {
+      "source": "exit_ai_sci_v2-stage-tuning",
+      "target": "transition_1",
+      "condition": null
+    },
+    {
+      "source": "transition_1",
+      "target": "policy_creative",
+      "condition": null
+    },
+    {
+      "source": "exit_ai_sci_v2-stage-creative",
+      "target": "transition_2",
+      "condition": null
+    },
+    {
+      "source": "transition_2",
+      "target": "policy_ablation",
+      "condition": null
+    }
+  ],
+  "start_node": "task_input",
+  "terminal": true,
+  "knob_values": {
+    "temperature": 0.7,
+    "stage_budget": 10.0,
+    "debug_prob": 0.3
+  },
+  "knob_bounds": {
+    "temperature": [
+      0.3,
+      0.5,
+      0.7,
+      0.9
+    ],
+    "stage_budget": [
+      5.0,
+      10.0,
+      20.0,
+      50.0
+    ],
+    "debug_prob": [
+      0.1,
+      0.2,
+      0.3,
+      0.5
+    ]
+  }
+}

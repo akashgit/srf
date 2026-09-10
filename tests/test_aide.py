@@ -1,72 +1,12 @@
 """Tests for AIDE mode (Issue #10)."""
 
-import importlib
 import json
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from srf._factory_shim import Conditional, FnNode, GateNode, LLMNode, Loop, Package, Sequential
 from srf.modes.aide import build_aide_knobs, build_aide_memory, build_aide_workflow
-from tests.conftest import collect_nodes
 from srf.ops.common.tree import TreeNode, TreeState, summarize_path
-
-
-def test_workflow_structure():
-    wf = build_aide_workflow()
-    assert wf.name == "aide"
-    assert isinstance(wf.root, Loop)
-    body = wf.root.body
-    assert isinstance(body, Sequential)
-    assert len(body.children) == 4
-
-    policy = body.children[0]
-    assert isinstance(policy, FnNode)
-    assert policy.name == "search_policy"
-
-    action = body.children[1]
-    assert isinstance(action, Conditional)
-    assert len(action.branches) == 3
-    assert "DRAFT" in action.branches
-    assert "IMPROVE" in action.branches
-    assert "DEBUG" in action.branches
-
-
-def test_three_branch_conditional():
-    wf = build_aide_workflow()
-    cond = wf.root.body.children[1]
-    assert isinstance(cond, Conditional)
-    for key, branch in cond.branches.items():
-        assert isinstance(branch, Package), f"Branch {key} is not a Package"
-
-
-def test_knobs():
-    knobs = build_aide_knobs()
-    names = {k.name for k in knobs}
-    assert "temperature" in names
-    assert "debug_prob" in names
-    for k in knobs:
-        assert k.default in k.bounds
-
-
-def test_memory_declarations():
-    mem = build_aide_memory()
-    assert len(mem) >= 1
-
-
-def test_fn_nodes_resolve():
-    wf = build_aide_workflow()
-    fn_nodes = collect_nodes(wf.root, FnNode)
-    for fn in fn_nodes:
-        module_path, func_name = fn.callable_name.split(":")
-        module = importlib.import_module(module_path)
-        assert hasattr(module, func_name), f"{fn.callable_name} not importable"
-
-
-def test_registry_discovers():
-    from srf.registry import ModeRegistry
-    registry = ModeRegistry()
-    assert "aide" in registry.list_modes()
 
 
 def test_tree_node_roundtrip():

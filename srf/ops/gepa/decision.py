@@ -1,7 +1,9 @@
 """Merge/mutate decision gate — should_merge.
 
-Used as GateNode evaluator: python -m srf.ops.gepa.decision should_merge
-Returns PROCEED (mutate) or RELOOP (merge).
+Used as a GateNode evaluator: ``python -m srf.ops.gepa.decision should_merge``.
+Prints the gate's forward outcome, ``mutate`` or ``merge``. Both are alternative
+branches of the same iteration rather than a rewind, so neither is named
+``reloop``.
 """
 
 from __future__ import annotations
@@ -39,37 +41,37 @@ def should_merge_callable(ctx: Any) -> None:
 def _decide(state: Any, population: dict, merge_threshold: int) -> tuple[str, str]:
     """Core decision logic.
 
-    Returns PROCEED (mutate) or RELOOP (merge) based on:
+    Returns ``mutate`` or ``merge`` based on:
     - use_merge AND (merge_due OR stagnation >= threshold)
     - AND attempts < max AND pop >= 2
     """
     if not state.use_merge:
-        return "PROCEED", "merge disabled"
+        return "mutate", "merge disabled"
 
     stagnation_triggered = state.stagnation_counter >= merge_threshold
     merge_due = state.merge_due
 
     if not (merge_due or stagnation_triggered):
-        return "PROCEED", "no stagnation, mutate"
+        return "mutate", "no stagnation, mutate"
 
     max_merge_attempts = 5
     if state.merge_attempts >= max_merge_attempts:
-        return "PROCEED", f"merge attempts exhausted ({state.merge_attempts})"
+        return "mutate", f"merge attempts exhausted ({state.merge_attempts})"
 
     if len(population) < 2:
-        return "PROCEED", "population too small for merge"
+        return "mutate", "population too small for merge"
 
-    return "RELOOP", f"merge triggered (stagnation={state.stagnation_counter})"
+    return "merge", f"merge triggered (stagnation={state.stagnation_counter})"
 
 
 def should_merge() -> None:
-    """GateNode evaluator — prints PROCEED (mutate) or RELOOP (merge)."""
+    """GateNode evaluator — prints ``mutate`` or ``merge``."""
     work_dir = Path(os.environ.get("SRF_WORK_DIR", "."))
     state_path = work_dir / "gepa_state.json"
     pop_path = work_dir / "population.json"
 
     if not state_path.exists():
-        print("PROCEED")
+        print("mutate")
         return
 
     state_data = json.loads(state_path.read_text())

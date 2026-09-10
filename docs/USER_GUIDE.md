@@ -1,5 +1,12 @@
 # SRF User Guide
 
+> **Stale — describes the pre-Phase-1 architecture.** This guide documents SRF's deleted
+> local runtime (`srf/_factory_shim.py`, `WorkflowExecutor`, the in-process LLM clients) and
+> the `srf run` / `srf lab` / `srf evolve` commands. SRF is now a pure package: it declares
+> flat-DAG graphs and the DSH workflow spine executes them. See `README.md` for the current
+> design and `/Users/akash/dsh/refactory-dsh/dsh-science/PLAN.md` for the migration. A full
+> rewrite of this guide is still outstanding.
+
 SRF (Scientific Research Factory) reimplements 13 AI-driven scientific discovery harnesses as composable factory workflow Packages. A single research question can be refracted through multiple strategies, each with tunable OptKnobs that the outer loop evolves.
 
 ---

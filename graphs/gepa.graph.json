@@ -1,0 +1,350 @@
+{
+  "name": "gepa",
+  "nodes": {
+    "task_input": {
+      "id": "task_input",
+      "reads": [],
+      "writes": [
+        "budget_state.json",
+        "eval.py",
+        "initial.py",
+        "knobs.json",
+        "task.yaml"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.task_input",
+      "callable_name": null,
+      "notes": "Materialize the selected task into the work directory.",
+      "_type": "FnNode"
+    },
+    "seed_run": {
+      "id": "seed_run",
+      "reads": [],
+      "writes": [
+        "accepted_history.json",
+        "best_solution.py",
+        "genealogy.json",
+        "gepa_state.json",
+        "population.json",
+        "rejection_history.json"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.seed accepted_history.json best_solution.py genealogy.json gepa_state.json population.json rejection_history.json",
+      "callable_name": null,
+      "notes": "Seed the run's population, tree, and per-mode state files.",
+      "_type": "FnNode"
+    },
+    "budget_check": {
+      "id": "budget_check",
+      "reads": [
+        "budget_state.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.common.budget check",
+      "gate_prompt": "reloop while the eval budget is unspent, proceed once it is spent.",
+      "max_iterations": 500,
+      "_type": "GateNode"
+    },
+    "exit_gepa": {
+      "id": "exit_gepa",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Loop exit point",
+      "_type": "FnNode"
+    },
+    "merge_decision": {
+      "id": "merge_decision",
+      "reads": [
+        "gepa_state.json",
+        "population.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.gepa.decision should_merge",
+      "gate_prompt": "mutate the selected parent, or merge the best programs.",
+      "max_iterations": null,
+      "_type": "GateNode"
+    },
+    "join_gepa-action": {
+      "id": "join_gepa-action",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Conditional join point",
+      "_type": "FnNode"
+    },
+    "select_parent": {
+      "id": "select_parent",
+      "reads": [
+        "gepa_state.json",
+        "population.json"
+      ],
+      "writes": [
+        "selected_parent.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.gepa.population:select_parent",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "build_reflective_prompt": {
+      "id": "build_reflective_prompt",
+      "reads": [
+        "accepted_history.json",
+        "rejection_history.json",
+        "selected_parent.json",
+        "task.yaml"
+      ],
+      "writes": [
+        "mutate_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.gepa.prompts:build_reflective_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "generate_code": {
+      "id": "generate_code",
+      "reads": [
+        "mutate_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are GEPA, a code evolution agent. Given a parent program, evaluation feedback, and a history of rejected attempts, produce an improved version. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "find_merge_candidates": {
+      "id": "find_merge_candidates",
+      "reads": [
+        "genealogy.json",
+        "population.json"
+      ],
+      "writes": [
+        "merge_candidates.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.gepa.merge:find_triplet_or_top2",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "build_merge_prompt": {
+      "id": "build_merge_prompt",
+      "reads": [
+        "merge_candidates.json",
+        "task.yaml"
+      ],
+      "writes": [
+        "merge_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.gepa.prompts:build_merge_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "generate_merge": {
+      "id": "generate_merge",
+      "reads": [
+        "merge_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are GEPA merge agent. Given two or three programs with their scores, combine their strengths into a single improved program. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "sandbox_eval": {
+      "id": "sandbox_eval",
+      "reads": [
+        "candidate.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "accept_or_reject": {
+      "id": "accept_or_reject",
+      "reads": [
+        "candidate.py",
+        "eval_result.json",
+        "genealogy.json",
+        "gepa_state.json",
+        "population.json",
+        "selected_parent.json"
+      ],
+      "writes": [
+        "accepted_history.json",
+        "best_solution.py",
+        "genealogy.json",
+        "gepa_state.json",
+        "population.json",
+        "rejection_history.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.gepa.acceptance:accept_or_reject",
+      "notes": "",
+      "_type": "FnNode"
+    }
+  },
+  "edges": [
+    {
+      "source": "select_parent",
+      "target": "build_reflective_prompt",
+      "condition": null
+    },
+    {
+      "source": "build_reflective_prompt",
+      "target": "generate_code",
+      "condition": null
+    },
+    {
+      "source": "merge_decision",
+      "target": "select_parent",
+      "condition": "mutate"
+    },
+    {
+      "source": "generate_code",
+      "target": "join_gepa-action",
+      "condition": null
+    },
+    {
+      "source": "find_merge_candidates",
+      "target": "build_merge_prompt",
+      "condition": null
+    },
+    {
+      "source": "build_merge_prompt",
+      "target": "generate_merge",
+      "condition": null
+    },
+    {
+      "source": "merge_decision",
+      "target": "find_merge_candidates",
+      "condition": "merge"
+    },
+    {
+      "source": "generate_merge",
+      "target": "join_gepa-action",
+      "condition": null
+    },
+    {
+      "source": "sandbox_eval",
+      "target": "accept_or_reject",
+      "condition": null
+    },
+    {
+      "source": "join_gepa-action",
+      "target": "sandbox_eval",
+      "condition": null
+    },
+    {
+      "source": "accept_or_reject",
+      "target": "budget_check",
+      "condition": null
+    },
+    {
+      "source": "budget_check",
+      "target": "merge_decision",
+      "condition": "reloop"
+    },
+    {
+      "source": "budget_check",
+      "target": "exit_gepa",
+      "condition": "proceed"
+    },
+    {
+      "source": "task_input",
+      "target": "seed_run",
+      "condition": null
+    },
+    {
+      "source": "seed_run",
+      "target": "merge_decision",
+      "condition": null
+    }
+  ],
+  "start_node": "task_input",
+  "terminal": true,
+  "knob_values": {
+    "temperature": 0.7,
+    "parent_selection": "best",
+    "max_rejection_context": 5.0,
+    "merge_stagnation_threshold": 15.0,
+    "acceptance_mode": "strict"
+  },
+  "knob_bounds": {
+    "temperature": [
+      0.3,
+      0.5,
+      0.7,
+      0.9,
+      1.0
+    ],
+    "parent_selection": [
+      "best",
+      "pareto",
+      "epsilon_greedy"
+    ],
+    "max_rejection_context": [
+      3.0,
+      5.0,
+      8.0,
+      12.0
+    ],
+    "merge_stagnation_threshold": [
+      5.0,
+      10.0,
+      15.0,
+      20.0,
+      30.0
+    ],
+    "acceptance_mode": [
+      "strict",
+      "lenient",
+      "off"
+    ]
+  }
+}

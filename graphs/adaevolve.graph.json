@@ -1,0 +1,327 @@
+{
+  "name": "adaevolve",
+  "nodes": {
+    "task_input": {
+      "id": "task_input",
+      "reads": [],
+      "writes": [
+        "budget_state.json",
+        "eval.py",
+        "initial.py",
+        "knobs.json",
+        "task.yaml"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.task_input",
+      "callable_name": null,
+      "notes": "Materialize the selected task into the work directory.",
+      "_type": "FnNode"
+    },
+    "seed_run": {
+      "id": "seed_run",
+      "reads": [],
+      "writes": [
+        "adaevolve_state.json",
+        "best_solution.py",
+        "population.json"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.seed adaevolve_state.json best_solution.py population.json",
+      "callable_name": null,
+      "notes": "Seed the run's population, tree, and per-mode state files.",
+      "_type": "FnNode"
+    },
+    "budget_check": {
+      "id": "budget_check",
+      "reads": [
+        "budget_state.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.common.budget check",
+      "gate_prompt": "reloop while the eval budget is unspent, proceed once it is spent.",
+      "max_iterations": 500,
+      "_type": "GateNode"
+    },
+    "exit_adaevolve": {
+      "id": "exit_adaevolve",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Loop exit point",
+      "_type": "FnNode"
+    },
+    "adaptive_sample": {
+      "id": "adaptive_sample",
+      "reads": [
+        "adaevolve_state.json",
+        "population.json"
+      ],
+      "writes": [
+        "ada_stagnation.json",
+        "selected_parent.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.adaevolve.ops:adaptive_sample",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "meta_gate_fn": {
+      "id": "meta_gate_fn",
+      "reads": [
+        "adaevolve_state.json"
+      ],
+      "writes": [
+        "meta_decision.txt"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.adaevolve.ops:meta_strategy_gate_fn",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "meta_gate": {
+      "id": "meta_gate",
+      "reads": [
+        "meta_decision.txt"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.adaevolve.gate meta_gate",
+      "gate_prompt": "take an incremental step, or a radical meta-strategy jump.",
+      "max_iterations": null,
+      "_type": "GateNode"
+    },
+    "join_adaevolve-strategy": {
+      "id": "join_adaevolve-strategy",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Conditional join point",
+      "_type": "FnNode"
+    },
+    "normal_prompt": {
+      "id": "normal_prompt",
+      "reads": [
+        "ada_stagnation.json",
+        "selected_parent.json",
+        "task.yaml"
+      ],
+      "writes": [
+        "ada_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.adaevolve.ops:build_ada_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "normal_generate": {
+      "id": "normal_generate",
+      "reads": [
+        "ada_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AdaEvolve in NORMAL mode. Incrementally improve the solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "meta_prompt": {
+      "id": "meta_prompt",
+      "reads": [
+        "ada_stagnation.json",
+        "selected_parent.json",
+        "task.yaml"
+      ],
+      "writes": [
+        "ada_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.adaevolve.ops:build_ada_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "meta_generate": {
+      "id": "meta_generate",
+      "reads": [
+        "ada_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AdaEvolve in META-STRATEGY mode. The search is stagnating. Try a fundamentally different approach. Be creative and bold. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 1.0,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "sandbox_eval": {
+      "id": "sandbox_eval",
+      "reads": [
+        "candidate.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "Run the task's eval command on the candidate and record the score.",
+      "_type": "FnNode"
+    },
+    "archive_update": {
+      "id": "archive_update",
+      "reads": [
+        "candidate.py",
+        "eval_result.json",
+        "population.json",
+        "selected_parent.json"
+      ],
+      "writes": [
+        "adaevolve_state.json",
+        "best_solution.py",
+        "population.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.adaevolve.ops:update_ada_archive",
+      "notes": "",
+      "_type": "FnNode"
+    }
+  },
+  "edges": [
+    {
+      "source": "normal_prompt",
+      "target": "normal_generate",
+      "condition": null
+    },
+    {
+      "source": "meta_gate",
+      "target": "normal_prompt",
+      "condition": "normal"
+    },
+    {
+      "source": "normal_generate",
+      "target": "join_adaevolve-strategy",
+      "condition": null
+    },
+    {
+      "source": "meta_prompt",
+      "target": "meta_generate",
+      "condition": null
+    },
+    {
+      "source": "meta_gate",
+      "target": "meta_prompt",
+      "condition": "meta"
+    },
+    {
+      "source": "meta_generate",
+      "target": "join_adaevolve-strategy",
+      "condition": null
+    },
+    {
+      "source": "adaptive_sample",
+      "target": "meta_gate_fn",
+      "condition": null
+    },
+    {
+      "source": "meta_gate_fn",
+      "target": "meta_gate",
+      "condition": null
+    },
+    {
+      "source": "join_adaevolve-strategy",
+      "target": "sandbox_eval",
+      "condition": null
+    },
+    {
+      "source": "sandbox_eval",
+      "target": "archive_update",
+      "condition": null
+    },
+    {
+      "source": "archive_update",
+      "target": "budget_check",
+      "condition": null
+    },
+    {
+      "source": "budget_check",
+      "target": "adaptive_sample",
+      "condition": "reloop"
+    },
+    {
+      "source": "budget_check",
+      "target": "exit_adaevolve",
+      "condition": "proceed"
+    },
+    {
+      "source": "task_input",
+      "target": "seed_run",
+      "condition": null
+    },
+    {
+      "source": "seed_run",
+      "target": "adaptive_sample",
+      "condition": null
+    }
+  ],
+  "start_node": "task_input",
+  "terminal": true,
+  "knob_values": {
+    "temperature": 0.7,
+    "parent_selection": "best",
+    "meta_temperature": 1.0
+  },
+  "knob_bounds": {
+    "temperature": [
+      0.3,
+      0.5,
+      0.7,
+      0.9,
+      1.0
+    ],
+    "parent_selection": [
+      "best",
+      "epsilon_greedy",
+      "power_law",
+      "uniform"
+    ],
+    "meta_temperature": [
+      0.8,
+      0.9,
+      1.0
+    ]
+  }
+}

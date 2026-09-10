@@ -1,53 +1,13 @@
 """Tests for SCS mode (Issue #18)."""
 
-import importlib
 import json
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from srf._factory_shim import FnNode, GateNode, LLMNode, Loop, Sequential
 from srf.modes.scs import build_scs_knobs, build_scs_memory, build_scs_workflow
 from srf.ops.common.population import PopulationState, Program, make_program_id, quality_diversity_accept
 from srf.ops.common.selection import select_best, select_epsilon_greedy, select_parent, select_uniform
-
-
-def test_workflow_structure():
-    wf = build_scs_workflow()
-    assert wf.name == "scs"
-    assert isinstance(wf.root, Loop)
-    assert isinstance(wf.root.body, Sequential)
-    assert isinstance(wf.root.gate, GateNode)
-    assert len(wf.root.body.children) == 5
-
-
-def test_knobs():
-    knobs = build_scs_knobs()
-    names = {k.name for k in knobs}
-    assert "temperature" in names
-    assert "parent_selection" in names
-    for k in knobs:
-        assert k.default in k.bounds
-
-
-def test_memory_declarations():
-    mem = build_scs_memory()
-    assert len(mem) >= 1
-
-
-def test_fn_nodes_resolve():
-    wf = build_scs_workflow()
-    for child in wf.root.body.children:
-        if isinstance(child, FnNode):
-            module_path, func_name = child.callable_name.split(":")
-            module = importlib.import_module(module_path)
-            assert hasattr(module, func_name), f"{child.callable_name} not importable"
-
-
-def test_registry_discovers():
-    from srf.registry import ModeRegistry
-    registry = ModeRegistry()
-    assert "scs" in registry.list_modes()
 
 
 def test_population_state():

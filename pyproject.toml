@@ -5,17 +5,16 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "srf"
 version = "0.1.0"
-description = "Scientific Research Factory — 13 AI-driven scientific discovery harnesses as composable factory workflow Packages"
+description = "Scientific Research Factory — 13 AI-driven scientific discovery harnesses as flat-DAG refactory workflows"
 requires-python = ">=3.12"
 dependencies = [
+    # SRF's graphs are built from refactory's vocabulary; SRF supplies no runtime.
+    "remote-factory",
     "structlog>=24.1.0",
     "pydantic>=2.10",
-    "httpx[http2]>=0.27.0",
+    "networkx>=3.6.1",
+    "pyyaml>=6.0",
 ]
-
-[project.optional-dependencies]
-openai = ["openai>=1.0"]
-vertex = ["google-auth>=2.0", "anthropic[vertex]>=0.40"]
 
 [project.scripts]
 srf = "srf.cli:main"
@@ -24,4 +23,7 @@ srf = "srf.cli:main"
 include = ["srf*"]
 
 [tool.setuptools.package-data]
-"srf" = ["tasks/**/*.yaml"]
+"srf" = ["tasks/**/*.yaml", "tools/*.mjs"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,220 @@
+{
+  "name": "evox",
+  "nodes": {
+    "task_input": {
+      "id": "task_input",
+      "reads": [],
+      "writes": [
+        "budget_state.json",
+        "eval.py",
+        "initial.py",
+        "knobs.json",
+        "task.yaml"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.task_input",
+      "callable_name": null,
+      "notes": "Materialize the selected task into the work directory.",
+      "_type": "FnNode"
+    },
+    "seed_run": {
+      "id": "seed_run",
+      "reads": [],
+      "writes": [
+        "best_solution.py",
+        "evox_state.json",
+        "population.json"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.seed best_solution.py evox_state.json population.json",
+      "callable_name": null,
+      "notes": "Seed the run's population, tree, and per-mode state files.",
+      "_type": "FnNode"
+    },
+    "budget_check": {
+      "id": "budget_check",
+      "reads": [
+        "budget_state.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.common.budget check",
+      "gate_prompt": "reloop while the eval budget is unspent, proceed once it is spent.",
+      "max_iterations": 500,
+      "_type": "GateNode"
+    },
+    "exit_evox": {
+      "id": "exit_evox",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Loop exit point",
+      "_type": "FnNode"
+    },
+    "sample": {
+      "id": "sample",
+      "reads": [
+        "evox_state.json",
+        "population.json"
+      ],
+      "writes": [
+        "selected_parent.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.evox.ops:sample_with_strategy",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "build_prompt": {
+      "id": "build_prompt",
+      "reads": [
+        "evox_state.json",
+        "selected_parent.json",
+        "task.yaml"
+      ],
+      "writes": [
+        "evox_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.evox.ops:build_evox_prompt",
+      "notes": "",
+      "_type": "FnNode"
+    },
+    "generate": {
+      "id": "generate",
+      "reads": [
+        "evox_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are EvoX Meta, an evolutionary optimizer where the strategy itself evolves. Apply the current meta-strategy to produce an improved solution. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.8,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "sandbox_eval": {
+      "id": "sandbox_eval",
+      "reads": [
+        "candidate.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "Run the task's eval command on the candidate and record the score.",
+      "_type": "FnNode"
+    },
+    "archive_update": {
+      "id": "archive_update",
+      "reads": [
+        "candidate.py",
+        "eval_result.json",
+        "population.json",
+        "selected_parent.json"
+      ],
+      "writes": [
+        "best_solution.py",
+        "evox_state.json",
+        "population.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.evox.ops:update_evox_archive",
+      "notes": "",
+      "_type": "FnNode"
+    }
+  },
+  "edges": [
+    {
+      "source": "build_prompt",
+      "target": "generate",
+      "condition": null
+    },
+    {
+      "source": "sample",
+      "target": "build_prompt",
+      "condition": null
+    },
+    {
+      "source": "generate",
+      "target": "sandbox_eval",
+      "condition": null
+    },
+    {
+      "source": "sandbox_eval",
+      "target": "archive_update",
+      "condition": null
+    },
+    {
+      "source": "archive_update",
+      "target": "budget_check",
+      "condition": null
+    },
+    {
+      "source": "budget_check",
+      "target": "sample",
+      "condition": "reloop"
+    },
+    {
+      "source": "budget_check",
+      "target": "exit_evox",
+      "condition": "proceed"
+    },
+    {
+      "source": "task_input",
+      "target": "seed_run",
+      "condition": null
+    },
+    {
+      "source": "seed_run",
+      "target": "sample",
+      "condition": null
+    }
+  ],
+  "start_node": "task_input",
+  "terminal": true,
+  "knob_values": {
+    "temperature": 0.8,
+    "parent_selection": "best",
+    "meta_interval": 15.0
+  },
+  "knob_bounds": {
+    "temperature": [
+      0.5,
+      0.7,
+      0.8,
+      0.9,
+      1.0
+    ],
+    "parent_selection": [
+      "best",
+      "epsilon_greedy",
+      "power_law",
+      "uniform"
+    ],
+    "meta_interval": [
+      10.0,
+      15.0,
+      20.0
+    ]
+  }
+}

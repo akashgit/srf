@@ -1,0 +1,329 @@
+{
+  "name": "ai_sci_v1",
+  "nodes": {
+    "task_input": {
+      "id": "task_input",
+      "reads": [],
+      "writes": [
+        "budget_state.json",
+        "eval.py",
+        "initial.py",
+        "knobs.json",
+        "task.yaml"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.task_input",
+      "callable_name": null,
+      "notes": "Materialize the selected task into the work directory.",
+      "_type": "FnNode"
+    },
+    "seed_run": {
+      "id": "seed_run",
+      "reads": [],
+      "writes": [
+        "ai_sci_state.json",
+        "autoresearch_state.json",
+        "best_solution.py"
+      ],
+      "blocking": true,
+      "command": "python -m srf.ops.common.seed ai_sci_state.json autoresearch_state.json best_solution.py",
+      "callable_name": null,
+      "notes": "Seed the run's population, tree, and per-mode state files.",
+      "_type": "FnNode"
+    },
+    "ideation": {
+      "id": "ideation",
+      "reads": [
+        "task.yaml"
+      ],
+      "writes": [
+        "ideation_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.ai_sci.ops:ideation",
+      "notes": "Prompt for 3-5 research ideas with benefit and risk.",
+      "_type": "FnNode"
+    },
+    "ideation_llm": {
+      "id": "ideation_llm",
+      "reads": [
+        "ideation_prompt.md"
+      ],
+      "writes": [
+        "ideas.md"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AI Scientist V1 in the IDEATION stage. Generate research ideas.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.9,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "budget_check": {
+      "id": "budget_check",
+      "reads": [
+        "budget_state.json"
+      ],
+      "writes": [],
+      "blocking": true,
+      "evaluator_type": "fn",
+      "evaluator_role": null,
+      "evaluator_command": "python -m srf.ops.common.budget check",
+      "gate_prompt": "reloop while the eval budget is unspent, proceed once it is spent.",
+      "max_iterations": 500,
+      "_type": "GateNode"
+    },
+    "exit_ai_sci_v1": {
+      "id": "exit_ai_sci_v1",
+      "reads": [],
+      "writes": [],
+      "blocking": true,
+      "command": "true",
+      "callable_name": null,
+      "notes": "Loop exit point",
+      "_type": "FnNode"
+    },
+    "exp_prompt": {
+      "id": "exp_prompt",
+      "reads": [
+        "best_solution.py",
+        "ideas.md",
+        "task.yaml"
+      ],
+      "writes": [
+        "optimize_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.autoresearch.ops:build_optimization_prompt",
+      "notes": "Prompt with the current best code and the ideation findings.",
+      "_type": "FnNode"
+    },
+    "exp_llm": {
+      "id": "exp_llm",
+      "reads": [
+        "optimize_prompt.md"
+      ],
+      "writes": [
+        "candidate.py"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AI Scientist V1 in the EXPERIMENTATION stage. Implement and improve the solution iteratively. Output a single fenced code block.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.7,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "sandbox_eval": {
+      "id": "sandbox_eval",
+      "reads": [
+        "candidate.py",
+        "task.yaml"
+      ],
+      "writes": [
+        "eval_result.json"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.common.sandbox:run_eval",
+      "notes": "Run the task's eval command on the candidate and record the score.",
+      "_type": "FnNode"
+    },
+    "exp_update": {
+      "id": "exp_update",
+      "reads": [
+        "candidate.py",
+        "eval_result.json"
+      ],
+      "writes": [
+        "autoresearch_state.json",
+        "best_solution.py"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.autoresearch.ops:update_autoresearch",
+      "notes": "Count the eval and promote the candidate to best when it wins.",
+      "_type": "FnNode"
+    },
+    "writeup": {
+      "id": "writeup",
+      "reads": [
+        "ai_sci_state.json",
+        "best_solution.py"
+      ],
+      "writes": [
+        "writeup_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.ai_sci.ops:writeup",
+      "notes": "Prompt for a structured report on the best solution.",
+      "_type": "FnNode"
+    },
+    "writeup_llm": {
+      "id": "writeup_llm",
+      "reads": [
+        "writeup_prompt.md"
+      ],
+      "writes": [
+        "writeup.md"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AI Scientist V1. Write a structured report of your findings.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.5,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    },
+    "review": {
+      "id": "review",
+      "reads": [
+        "ai_sci_state.json",
+        "best_solution.py"
+      ],
+      "writes": [
+        "review_prompt.md"
+      ],
+      "blocking": true,
+      "command": "",
+      "callable_name": "srf.ops.ai_sci.ops:review",
+      "notes": "Prompt for correctness, efficiency, novelty, and quality scores.",
+      "_type": "FnNode"
+    },
+    "review_llm": {
+      "id": "review_llm",
+      "reads": [
+        "review_prompt.md"
+      ],
+      "writes": [
+        "review.md"
+      ],
+      "blocking": true,
+      "system_prompt": "You are AI Scientist V1. Review the quality of the solution.",
+      "instance_prompt": "",
+      "model": "sonnet",
+      "provider": "anthropic",
+      "max_tokens": 8192,
+      "max_turns": 10,
+      "temperature": 0.3,
+      "stop_sequences": [],
+      "tools": [],
+      "tool_choice": "auto",
+      "timeout": 600,
+      "_type": "LLMNode"
+    }
+  },
+  "edges": [
+    {
+      "source": "ideation",
+      "target": "ideation_llm",
+      "condition": null
+    },
+    {
+      "source": "exp_prompt",
+      "target": "exp_llm",
+      "condition": null
+    },
+    {
+      "source": "exp_llm",
+      "target": "sandbox_eval",
+      "condition": null
+    },
+    {
+      "source": "sandbox_eval",
+      "target": "exp_update",
+      "condition": null
+    },
+    {
+      "source": "exp_update",
+      "target": "budget_check",
+      "condition": null
+    },
+    {
+      "source": "budget_check",
+      "target": "exp_prompt",
+      "condition": "reloop"
+    },
+    {
+      "source": "budget_check",
+      "target": "exit_ai_sci_v1",
+      "condition": "proceed"
+    },
+    {
+      "source": "writeup",
+      "target": "writeup_llm",
+      "condition": null
+    },
+    {
+      "source": "review",
+      "target": "review_llm",
+      "condition": null
+    },
+    {
+      "source": "task_input",
+      "target": "seed_run",
+      "condition": null
+    },
+    {
+      "source": "seed_run",
+      "target": "ideation",
+      "condition": null
+    },
+    {
+      "source": "ideation_llm",
+      "target": "exp_prompt",
+      "condition": null
+    },
+    {
+      "source": "exit_ai_sci_v1",
+      "target": "writeup",
+      "condition": null
+    },
+    {
+      "source": "writeup_llm",
+      "target": "review",
+      "condition": null
+    }
+  ],
+  "start_node": "task_input",
+  "terminal": true,
+  "knob_values": {
+    "temperature": 0.7,
+    "experiment_budget": 20.0
+  },
+  "knob_bounds": {
+    "temperature": [
+      0.3,
+      0.5,
+      0.7,
+      0.9
+    ],
+    "experiment_budget": [
+      10.0,
+      20.0,
+      50.0
+    ]
+  }
+}

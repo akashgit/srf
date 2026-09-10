@@ -7,13 +7,18 @@ from typing import Any
 
 import structlog
 
+from srf.ops.common.paths import write_declared
 from srf.ops.common.prompts import format_program_context, format_task_header
 
 logger = structlog.get_logger()
 
 
 def build_scientist_prompt(ctx: Any) -> None:
-    """Build prompt for individual scientist agents."""
+    """Build prompt for individual scientist agents.
+
+    Each parallel branch declares its own prompt file, so the scientists run
+    concurrently without overwriting one another's prompt.
+    """
     task = ctx.task
     parts = [
         format_task_header(task),
@@ -22,7 +27,7 @@ def build_scientist_prompt(ctx: Any) -> None:
         "Take a unique approach — don't follow the obvious path. "
         "Output a single fenced code block with a complete solution.",
     ]
-    ctx.write_text("scientist_prompt.md", "\n\n".join(parts))
+    write_declared(ctx, "scientist_prompt.md", "\n\n".join(parts), suffix=".md")
 
 
 def build_merge_prompt(ctx: Any) -> None:

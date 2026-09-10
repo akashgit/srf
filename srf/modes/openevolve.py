@@ -1,21 +1,38 @@
 """OpenEvolve mode — multi-island MAP-Elites evolution.
 
-DAG structure:
-  Loop(body=Sequential(sample, prompt, generate, eval, update_island), gate=budget)
+Graph:
+  task_input → seed_run → Loop:
+    sample → build_prompt → generate → sandbox_eval → update_island
+                                                          │
+                                                          ▼
+                                    budget_check ──reloop──▶ sample
+                                                 ──proceed─▶ exit
+
+An iteration samples a parent and its inspiration from the island archive,
+mutates it, scores the candidate, then writes the result back into
+``island_populations.json`` — the archive the next iteration samples from.
 """
 
 from __future__ import annotations
 
-from srf._factory_shim import (
-    Edge,
-    FnNode,
-    GateNode,
-    LLMNode,
-    Loop,
+from factory.workflow.primitives import Workflow
+
+from srf.packaging import (
     MemoryDeclaration,
     OptKnob,
     Sequential,
-    Workflow,
+    budget_gate,
+    compile_mode,
+    declared,
+    eval_step,
+    knob,
+    llm,
+    loop,
+    memory,
+    op,
+    seed_run,
+    single,
+    task_input,
 )
 
 SYSTEM_PROMPT = (
@@ -24,65 +41,115 @@ SYSTEM_PROMPT = (
     "Output a single fenced code block."
 )
 
+KNOBS: list[OptKnob] = [
+    knob(
+        "temperature",
+        "threshold",
+        0.8,
+        [0.5, 0.7, 0.8, 0.9, 1.0],
+        "generate",
+        "LLM sampling temperature",
+    ),
+    knob("n_islands", "threshold", 3.0, [2.0, 3.0, 5.0], "update_island", "Number of islands"),
+    knob(
+        "migration_interval",
+        "threshold",
+        10.0,
+        [5.0, 10.0, 20.0],
+        "update_island",
+        "Generations between migrations",
+    ),
+    knob(
+        "parent_selection",
+        "prompt",
+        "best",
+        ["best", "epsilon_greedy", "power_law", "uniform"],
+        "sample",
+        "Parent selection strategy",
+    ),
+]
+
+SEEDS = ("island_populations.json",)
+"""Sampled on the loop's first pass, written back by ``update_island`` afterwards."""
+
+MEMORY: list[MemoryDeclaration] = [
+    memory("openevolve.islands", "kv"),
+    memory("openevolve.migrations", "log"),
+]
+
+UPDATE_WRITES = {"island_populations.json", "openevolve_state.json", "best_solution.py"}
+
+
+def _iteration_package():
+    """One generation: sample a parent, mutate it, score it, update its island."""
+    sample = single(
+        op(
+            "sample",
+            "srf.ops.openevolve.ops:sample_parent_and_inspiration",
+            reads={"island_populations.json"},
+            writes={"selected_parent.json", "inspiration.json"},
+        ),
+        requires={"island_populations.json"},
+        produces={"selected_parent.json", "inspiration.json"},
+    )
+    prompt = single(
+        op(
+            "build_prompt",
+            "srf.ops.openevolve.ops:build_evolve_prompt",
+            reads={"selected_parent.json", "inspiration.json", "task.yaml"},
+            writes={"evolve_prompt.md"},
+        ),
+        requires={"selected_parent.json", "inspiration.json", "task.yaml"},
+        produces={"evolve_prompt.md"},
+    )
+    generate = single(
+        llm(
+            "generate",
+            SYSTEM_PROMPT,
+            temperature=0.8,
+            reads={"evolve_prompt.md"},
+            writes={"candidate.py"},
+        ),
+        requires={"evolve_prompt.md"},
+        produces={"candidate.py"},
+    )
+    update = single(
+        op(
+            "update_island",
+            "srf.ops.openevolve.ops:update_island",
+            reads={
+                "eval_result.json",
+                "candidate.py",
+                "selected_parent.json",
+                "island_populations.json",
+            },
+            writes=UPDATE_WRITES,
+        ),
+        requires={"eval_result.json", "candidate.py", "selected_parent.json"},
+        produces=UPDATE_WRITES,
+    )
+    return Sequential(
+        sample,
+        prompt,
+        generate,
+        eval_step("sandbox_eval"),
+        update,
+        name="openevolve-iteration",
+    )
+
 
 def build_openevolve_knobs() -> list[OptKnob]:
-    return [
-        OptKnob(name="temperature", kind="threshold", default=0.8,
-                bounds=[0.5, 0.7, 0.8, 0.9, 1.0], node_id="generate",
-                description="LLM sampling temperature"),
-        OptKnob(name="n_islands", kind="threshold", default=3.0,
-                bounds=[2.0, 3.0, 5.0], node_id="island",
-                description="Number of islands"),
-        OptKnob(name="migration_interval", kind="threshold", default=10.0,
-                bounds=[5.0, 10.0, 20.0], node_id="migration",
-                description="Generations between migrations"),
-        OptKnob(name="parent_selection", kind="prompt", default="best",
-                bounds=["best", "epsilon_greedy", "power_law", "uniform"],
-                node_id="sample", description="Parent selection strategy"),
-    ]
+    """The knob declarations, for callers that only want the tunables."""
+    return list(KNOBS)
 
 
 def build_openevolve_memory() -> list[MemoryDeclaration]:
-    return [
-        MemoryDeclaration(namespace="openevolve.islands", kind="kv", retention="run"),
-        MemoryDeclaration(namespace="openevolve.migrations", kind="log", retention="run"),
-    ]
+    """The memory declarations, for callers that only want the namespaces."""
+    return list(MEMORY)
 
 
 def build_openevolve_workflow() -> Workflow:
-    sample = FnNode(
-        name="sample",
-        callable_name="srf.ops.openevolve.ops:sample_parent_and_inspiration",
-        reads={"island_populations.json"},
-        writes={"selected_parent.json", "inspiration.json"},
-    )
-    prompt = FnNode(
-        name="build_prompt",
-        callable_name="srf.ops.openevolve.ops:build_evolve_prompt",
-        reads={"selected_parent.json", "inspiration.json", "task.yaml"},
-        writes={"evolve_prompt.md"},
-    )
-    generate = LLMNode(
-        name="generate",
-        model="sonnet", temperature=0.8,
-        system_prompt=SYSTEM_PROMPT,
-        reads={"evolve_prompt.md"}, writes={"candidate.py"},
-    )
-    evaluate = FnNode(
-        name="sandbox_eval",
-        callable_name="srf.ops.common.sandbox:run_eval",
-        reads={"candidate.py", "task.yaml"},
-        writes={"eval_result.json"},
-    )
-    update = FnNode(
-        name="update_island",
-        callable_name="srf.ops.openevolve.ops:update_island",
-        reads={"eval_result.json", "candidate.py", "selected_parent.json", "island_populations.json"},
-        writes={"island_populations.json", "openevolve_state.json", "best_solution.py"},
-    )
-    budget_gate = GateNode(name="budget_check", evaluator_command="python -m srf.ops.common.budget check")
-
-    iteration = Sequential(name="openevolve-iteration", children=[sample, prompt, generate, evaluate, update])
-    loop = Loop(name="openevolve", body=iteration, gate=budget_gate, max_iterations=500)
-
-    return Workflow(name="openevolve", root=loop, knobs=build_openevolve_knobs(), memory=build_openevolve_memory())
+    """Lower openevolve to the flat DAG the spine executes."""
+    study = loop(_iteration_package(), budget_gate(), name="openevolve")
+    root = Sequential(task_input(), seed_run(SEEDS), study, name="openevolve")
+    return compile_mode("openevolve", declared(root, knobs=KNOBS, memory=MEMORY))
