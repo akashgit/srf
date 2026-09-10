@@ -52,10 +52,17 @@ def op(
     writes: Iterable[str] = (),
     notes: str = "",
 ) -> FnNode:
-    """A deterministic op, named as ``srf.ops.<module>:<function>``."""
+    """A deterministic op, named as ``srf.ops.<module>:<function>``.
+
+    The node carries both the semantic ``callable_name`` and the ``command`` the
+    runtime executes: ``python -m srf.ops.run <callable_name>``. The adapter
+    (`srf/ops/run.py`) rebuilds the context the op expects from the node
+    declaration and the run's environment.
+    """
     return FnNode(
         id=node_id,
         callable_name=callable_name,
+        command=f"python -m srf.ops.run {callable_name}",
         reads=set(reads),
         writes=set(writes),
         notes=notes,

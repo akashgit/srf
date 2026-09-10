@@ -65,7 +65,7 @@
         "agent_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.karpathy.ops:build_agent_prompt",
       "callable_name": "srf.ops.karpathy.ops:build_agent_prompt",
       "notes": "",
       "_type": "FnNode"
@@ -98,7 +98,7 @@
         "eval_result.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "Run the task's eval command on the candidate and record the score.",
       "_type": "FnNode"
@@ -114,7 +114,7 @@
         "karpathy_state.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.karpathy.ops:update_karpathy_state",
       "callable_name": "srf.ops.karpathy.ops:update_karpathy_state",
       "notes": "",
       "_type": "FnNode"

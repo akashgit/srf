@@ -79,6 +79,10 @@ def check() -> None:
 import os
 
 if __name__ == "__main__":
+    # The gate's stdout is a verdict protocol; route structlog to stderr.
+    from srf.logging.config import configure_logging
+
+    configure_logging()
     if len(sys.argv) > 1 and sys.argv[1] == "check":
         check()
     else:

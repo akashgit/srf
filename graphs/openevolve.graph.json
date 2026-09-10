@@ -63,7 +63,7 @@
         "selected_parent.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.openevolve.ops:sample_parent_and_inspiration",
       "callable_name": "srf.ops.openevolve.ops:sample_parent_and_inspiration",
       "notes": "",
       "_type": "FnNode"
@@ -79,7 +79,7 @@
         "evolve_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.openevolve.ops:build_evolve_prompt",
       "callable_name": "srf.ops.openevolve.ops:build_evolve_prompt",
       "notes": "",
       "_type": "FnNode"
@@ -116,7 +116,7 @@
         "eval_result.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "Run the task's eval command on the candidate and record the score.",
       "_type": "FnNode"
@@ -135,7 +135,7 @@
         "openevolve_state.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.openevolve.ops:update_island",
       "callable_name": "srf.ops.openevolve.ops:update_island",
       "notes": "",
       "_type": "FnNode"

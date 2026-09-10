@@ -40,7 +40,7 @@
         "ideation_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.ai_sci.ops:ideation",
       "callable_name": "srf.ops.ai_sci.ops:ideation",
       "notes": "Prompt for 3-5 research ideas with benefit and risk.",
       "_type": "FnNode"
@@ -102,7 +102,7 @@
         "optimize_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.autoresearch.ops:build_optimization_prompt",
       "callable_name": "srf.ops.autoresearch.ops:build_optimization_prompt",
       "notes": "Prompt with the current best code and the ideation findings.",
       "_type": "FnNode"
@@ -139,7 +139,7 @@
         "eval_result.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "Run the task's eval command on the candidate and record the score.",
       "_type": "FnNode"
@@ -155,7 +155,7 @@
         "best_solution.py"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.autoresearch.ops:update_autoresearch",
       "callable_name": "srf.ops.autoresearch.ops:update_autoresearch",
       "notes": "Count the eval and promote the candidate to best when it wins.",
       "_type": "FnNode"
@@ -170,7 +170,7 @@
         "writeup_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.ai_sci.ops:writeup",
       "callable_name": "srf.ops.ai_sci.ops:writeup",
       "notes": "Prompt for a structured report on the best solution.",
       "_type": "FnNode"
@@ -207,7 +207,7 @@
         "review_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.ai_sci.ops:review",
       "callable_name": "srf.ops.ai_sci.ops:review",
       "notes": "Prompt for correctness, efficiency, novelty, and quality scores.",
       "_type": "FnNode"

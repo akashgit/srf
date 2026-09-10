@@ -65,7 +65,7 @@
         "aide_target.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:search_policy",
       "callable_name": "srf.ops.aide.ops:search_policy",
       "notes": "Score the tree and pick the stage's next action.",
       "_type": "FnNode"
@@ -103,7 +103,7 @@
         "aide_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:build_draft_prompt",
       "callable_name": "srf.ops.aide.ops:build_draft_prompt",
       "notes": "Prompt with the task header and its initial code.",
       "_type": "FnNode"
@@ -141,7 +141,7 @@
         "aide_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:build_improve_prompt",
       "callable_name": "srf.ops.aide.ops:build_improve_prompt",
       "notes": "Prompt with the target node's code and its search path.",
       "_type": "FnNode"
@@ -179,7 +179,7 @@
         "aide_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:build_debug_prompt",
       "callable_name": "srf.ops.aide.ops:build_debug_prompt",
       "notes": "Prompt with the buggy node's code and its error output.",
       "_type": "FnNode"
@@ -216,7 +216,7 @@
         "eval_result.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "Run the task's eval command on the candidate and record the score.",
       "_type": "FnNode"
@@ -235,7 +235,7 @@
         "tree_state.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:update_tree",
       "callable_name": "srf.ops.aide.ops:update_tree",
       "notes": "Add the candidate to the tree and promote it when it scores best.",
       "_type": "FnNode"
@@ -249,7 +249,7 @@
         "ai_sci_state.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.ai_sci.ops:stage_transition",
       "callable_name": "srf.ops.ai_sci.ops:stage_transition",
       "notes": "Close the finished stage and open the next one.",
       "_type": "FnNode"
@@ -288,7 +288,7 @@
         "aide_target.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:search_policy",
       "callable_name": "srf.ops.aide.ops:search_policy",
       "notes": "Score the tree and pick the stage's next action.",
       "_type": "FnNode"
@@ -326,7 +326,7 @@
         "aide_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:build_draft_prompt",
       "callable_name": "srf.ops.aide.ops:build_draft_prompt",
       "notes": "Prompt with the task header and its initial code.",
       "_type": "FnNode"
@@ -364,7 +364,7 @@
         "aide_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:build_improve_prompt",
       "callable_name": "srf.ops.aide.ops:build_improve_prompt",
       "notes": "Prompt with the target node's code and its search path.",
       "_type": "FnNode"
@@ -402,7 +402,7 @@
         "aide_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:build_debug_prompt",
       "callable_name": "srf.ops.aide.ops:build_debug_prompt",
       "notes": "Prompt with the buggy node's code and its error output.",
       "_type": "FnNode"
@@ -439,7 +439,7 @@
         "eval_result.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "Run the task's eval command on the candidate and record the score.",
       "_type": "FnNode"
@@ -458,7 +458,7 @@
         "tree_state.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:update_tree",
       "callable_name": "srf.ops.aide.ops:update_tree",
       "notes": "Add the candidate to the tree and promote it when it scores best.",
       "_type": "FnNode"
@@ -472,7 +472,7 @@
         "ai_sci_state.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.ai_sci.ops:stage_transition",
       "callable_name": "srf.ops.ai_sci.ops:stage_transition",
       "notes": "Close the finished stage and open the next one.",
       "_type": "FnNode"
@@ -511,7 +511,7 @@
         "aide_target.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:search_policy",
       "callable_name": "srf.ops.aide.ops:search_policy",
       "notes": "Score the tree and pick the stage's next action.",
       "_type": "FnNode"
@@ -549,7 +549,7 @@
         "aide_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:build_draft_prompt",
       "callable_name": "srf.ops.aide.ops:build_draft_prompt",
       "notes": "Prompt with the task header and its initial code.",
       "_type": "FnNode"
@@ -587,7 +587,7 @@
         "aide_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:build_improve_prompt",
       "callable_name": "srf.ops.aide.ops:build_improve_prompt",
       "notes": "Prompt with the target node's code and its search path.",
       "_type": "FnNode"
@@ -625,7 +625,7 @@
         "aide_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:build_debug_prompt",
       "callable_name": "srf.ops.aide.ops:build_debug_prompt",
       "notes": "Prompt with the buggy node's code and its error output.",
       "_type": "FnNode"
@@ -662,7 +662,7 @@
         "eval_result.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "Run the task's eval command on the candidate and record the score.",
       "_type": "FnNode"
@@ -681,7 +681,7 @@
         "tree_state.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:update_tree",
       "callable_name": "srf.ops.aide.ops:update_tree",
       "notes": "Add the candidate to the tree and promote it when it scores best.",
       "_type": "FnNode"
@@ -695,7 +695,7 @@
         "ai_sci_state.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.ai_sci.ops:stage_transition",
       "callable_name": "srf.ops.ai_sci.ops:stage_transition",
       "notes": "Close the finished stage and open the next one.",
       "_type": "FnNode"
@@ -734,7 +734,7 @@
         "aide_target.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:search_policy",
       "callable_name": "srf.ops.aide.ops:search_policy",
       "notes": "Score the tree and pick the stage's next action.",
       "_type": "FnNode"
@@ -772,7 +772,7 @@
         "aide_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:build_draft_prompt",
       "callable_name": "srf.ops.aide.ops:build_draft_prompt",
       "notes": "Prompt with the task header and its initial code.",
       "_type": "FnNode"
@@ -810,7 +810,7 @@
         "aide_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:build_improve_prompt",
       "callable_name": "srf.ops.aide.ops:build_improve_prompt",
       "notes": "Prompt with the target node's code and its search path.",
       "_type": "FnNode"
@@ -848,7 +848,7 @@
         "aide_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:build_debug_prompt",
       "callable_name": "srf.ops.aide.ops:build_debug_prompt",
       "notes": "Prompt with the buggy node's code and its error output.",
       "_type": "FnNode"
@@ -885,7 +885,7 @@
         "eval_result.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "Run the task's eval command on the candidate and record the score.",
       "_type": "FnNode"
@@ -904,7 +904,7 @@
         "tree_state.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.aide.ops:update_tree",
       "callable_name": "srf.ops.aide.ops:update_tree",
       "notes": "Add the candidate to the tree and promote it when it scores best.",
       "_type": "FnNode"

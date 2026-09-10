@@ -65,7 +65,7 @@
         "selected_parent.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.evox.ops:sample_with_strategy",
       "callable_name": "srf.ops.evox.ops:sample_with_strategy",
       "notes": "",
       "_type": "FnNode"
@@ -81,7 +81,7 @@
         "evox_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.evox.ops:build_evox_prompt",
       "callable_name": "srf.ops.evox.ops:build_evox_prompt",
       "notes": "",
       "_type": "FnNode"
@@ -118,7 +118,7 @@
         "eval_result.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "Run the task's eval command on the candidate and record the score.",
       "_type": "FnNode"
@@ -137,7 +137,7 @@
         "population.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.evox.ops:update_evox_archive",
       "callable_name": "srf.ops.evox.ops:update_evox_archive",
       "notes": "",
       "_type": "FnNode"

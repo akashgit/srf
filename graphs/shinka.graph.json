@@ -66,7 +66,7 @@
         "selected_parent.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.shinka.ops:sample_and_reflect",
       "callable_name": "srf.ops.shinka.ops:sample_and_reflect",
       "notes": "",
       "_type": "FnNode"
@@ -82,7 +82,7 @@
         "shinka_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.shinka.ops:build_shinka_prompt",
       "callable_name": "srf.ops.shinka.ops:build_shinka_prompt",
       "notes": "",
       "_type": "FnNode"
@@ -119,7 +119,7 @@
         "eval_result.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "Run the task's eval command on the candidate and record the score.",
       "_type": "FnNode"
@@ -138,7 +138,7 @@
         "shinka_state.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.shinka.ops:update_shinka_archive",
       "callable_name": "srf.ops.shinka.ops:update_shinka_archive",
       "notes": "",
       "_type": "FnNode"

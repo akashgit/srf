@@ -60,7 +60,7 @@
         "candidate_prompt_0.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.best_of_n.ops:build_candidate_prompt",
       "callable_name": "srf.ops.best_of_n.ops:build_candidate_prompt",
       "notes": "",
       "_type": "FnNode"
@@ -97,7 +97,7 @@
         "eval_result_0.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "",
       "_type": "FnNode"
@@ -111,7 +111,7 @@
         "candidate_prompt_1.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.best_of_n.ops:build_candidate_prompt",
       "callable_name": "srf.ops.best_of_n.ops:build_candidate_prompt",
       "notes": "",
       "_type": "FnNode"
@@ -148,7 +148,7 @@
         "eval_result_1.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "",
       "_type": "FnNode"
@@ -162,7 +162,7 @@
         "candidate_prompt_2.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.best_of_n.ops:build_candidate_prompt",
       "callable_name": "srf.ops.best_of_n.ops:build_candidate_prompt",
       "notes": "",
       "_type": "FnNode"
@@ -199,7 +199,7 @@
         "eval_result_2.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "",
       "_type": "FnNode"
@@ -213,7 +213,7 @@
         "candidate_prompt_3.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.best_of_n.ops:build_candidate_prompt",
       "callable_name": "srf.ops.best_of_n.ops:build_candidate_prompt",
       "notes": "",
       "_type": "FnNode"
@@ -250,7 +250,7 @@
         "eval_result_3.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "",
       "_type": "FnNode"
@@ -264,7 +264,7 @@
         "candidate_prompt_4.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.best_of_n.ops:build_candidate_prompt",
       "callable_name": "srf.ops.best_of_n.ops:build_candidate_prompt",
       "notes": "",
       "_type": "FnNode"
@@ -301,7 +301,7 @@
         "eval_result_4.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "",
       "_type": "FnNode"
@@ -325,7 +325,7 @@
         "best_solution.py"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.best_of_n.ops:select_best_candidate",
       "callable_name": "srf.ops.best_of_n.ops:select_best_candidate",
       "notes": "",
       "_type": "FnNode"

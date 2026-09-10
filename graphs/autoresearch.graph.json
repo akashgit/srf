@@ -38,7 +38,7 @@
         "research_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.autoresearch.ops:research_phase",
       "callable_name": "srf.ops.autoresearch.ops:research_phase",
       "notes": "",
       "_type": "FnNode"
@@ -100,7 +100,7 @@
         "optimize_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.autoresearch.ops:build_optimization_prompt",
       "callable_name": "srf.ops.autoresearch.ops:build_optimization_prompt",
       "notes": "",
       "_type": "FnNode"
@@ -137,7 +137,7 @@
         "eval_result.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "Run the task's eval command on the candidate and record the score.",
       "_type": "FnNode"
@@ -153,7 +153,7 @@
         "best_solution.py"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.autoresearch.ops:update_autoresearch",
       "callable_name": "srf.ops.autoresearch.ops:update_autoresearch",
       "notes": "",
       "_type": "FnNode"

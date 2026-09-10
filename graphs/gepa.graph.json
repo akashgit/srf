@@ -93,7 +93,7 @@
         "selected_parent.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.gepa.population:select_parent",
       "callable_name": "srf.ops.gepa.population:select_parent",
       "notes": "",
       "_type": "FnNode"
@@ -110,7 +110,7 @@
         "mutate_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.gepa.prompts:build_reflective_prompt",
       "callable_name": "srf.ops.gepa.prompts:build_reflective_prompt",
       "notes": "",
       "_type": "FnNode"
@@ -147,7 +147,7 @@
         "merge_candidates.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.gepa.merge:find_triplet_or_top2",
       "callable_name": "srf.ops.gepa.merge:find_triplet_or_top2",
       "notes": "",
       "_type": "FnNode"
@@ -162,7 +162,7 @@
         "merge_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.gepa.prompts:build_merge_prompt",
       "callable_name": "srf.ops.gepa.prompts:build_merge_prompt",
       "notes": "",
       "_type": "FnNode"
@@ -199,7 +199,7 @@
         "eval_result.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "",
       "_type": "FnNode"
@@ -223,7 +223,7 @@
         "rejection_history.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.gepa.acceptance:accept_or_reject",
       "callable_name": "srf.ops.gepa.acceptance:accept_or_reject",
       "notes": "",
       "_type": "FnNode"

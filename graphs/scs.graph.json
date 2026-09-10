@@ -64,7 +64,7 @@
         "selected_parent.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.scs.ops:sample_from_archive",
       "callable_name": "srf.ops.scs.ops:sample_from_archive",
       "notes": "",
       "_type": "FnNode"
@@ -80,7 +80,7 @@
         "scs_prompt.md"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.scs.ops:build_scs_prompt",
       "callable_name": "srf.ops.scs.ops:build_scs_prompt",
       "notes": "",
       "_type": "FnNode"
@@ -117,7 +117,7 @@
         "eval_result.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.common.sandbox:run_eval",
       "callable_name": "srf.ops.common.sandbox:run_eval",
       "notes": "Run the task's eval command on the candidate and record the score.",
       "_type": "FnNode"
@@ -136,7 +136,7 @@
         "scs_state.json"
       ],
       "blocking": true,
-      "command": "",
+      "command": "python -m srf.ops.run srf.ops.scs.ops:update_archive",
       "callable_name": "srf.ops.scs.ops:update_archive",
       "notes": "",
       "_type": "FnNode"
