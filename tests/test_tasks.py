@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from srf.tasks.registry import TaskRegistry
 
 
@@ -49,6 +51,9 @@ def test_autocorrelation_eval_on_initial():
 
 
 def test_trimul_eval_on_initial():
+    # trimul is a GPU task whose eval needs numpy (and a GPU) — not part of the
+    # minimal semantics install, so skip rather than fail when it is absent.
+    pytest.importorskip("numpy")
     task_dir = Path(__file__).parent.parent / "srf" / "tasks" / "gpu" / "trimul"
     result = subprocess.run(
         [sys.executable, str(task_dir / "eval.py")],
