@@ -172,7 +172,6 @@ def test_llm_and_agent_nodes_carry_a_prompt(workflows: dict[str, Workflow], mode
         type_name = type(node).__name__
         if type_name == "LLMNode":
             assert node.system_prompt, f"{mode}:{node.id} has no system prompt"
-            assert node.model
         if type_name == "AgentNode":
             assert node.prompt_template, f"{mode}:{node.id} has no prompt template"
 
@@ -221,3 +220,15 @@ def test_node_id_matches_table_key(workflows: dict[str, Workflow]) -> None:
     for mode, workflow in workflows.items():
         for key, node in workflow.nodes.items():
             assert node.id == key, f"{mode}: node keyed {key} declares id {node.id}"
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_llm_and_agent_nodes_are_model_and_provider_agnostic(workflows: dict[str, Workflow], mode: str) -> None:
+    """A graph names neither a model nor a provider: the runtime picks both."""
+    for node in workflows[mode].nodes.values():
+        type_name = type(node).__name__
+        if type_name == "LLMNode":
+            assert node.model == "", f"{mode}:{node.id} pins model {node.model!r}"
+            assert node.provider == "auto", f"{mode}:{node.id} pins provider {node.provider!r}"
+        if type_name == "AgentNode":
+            assert node.model == "", f"{mode}:{node.id} pins model {node.model!r}"

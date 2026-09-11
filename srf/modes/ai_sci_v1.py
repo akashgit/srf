@@ -89,7 +89,6 @@ def _ideation_package() -> Package:
     ideation_llm = llm(
         "ideation_llm",
         IDEATION_PROMPT,
-        model="sonnet",
         temperature=0.9,
         reads={"ideation_prompt.md"},
         writes={"ideas.md"},
@@ -127,7 +126,6 @@ def _experiment_generate_package() -> Package:
         llm(
             "exp_llm",
             EXPERIMENT_PROMPT,
-            model="sonnet",
             temperature=0.7,
             reads={"optimize_prompt.md"},
             writes={"candidate.py"},
@@ -185,7 +183,6 @@ def _writeup_package() -> Package:
     writeup_llm = llm(
         "writeup_llm",
         WRITEUP_PROMPT,
-        model="sonnet",
         temperature=0.5,
         reads={"writeup_prompt.md"},
         writes={"writeup.md"},
@@ -212,7 +209,6 @@ def _review_package() -> Package:
     review_llm = llm(
         "review_llm",
         REVIEW_PROMPT,
-        model="sonnet",
         temperature=0.3,
         reads={"review_prompt.md"},
         writes={"review.md"},

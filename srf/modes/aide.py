@@ -128,7 +128,6 @@ def _draft_package() -> Package:
     generate = llm(
         "draft_generate",
         SYSTEM_PROMPT_DRAFT,
-        model="sonnet",
         temperature=0.7,
         reads={"aide_prompt.md"},
         writes={"candidate.py"},
@@ -155,7 +154,6 @@ def _improve_package() -> Package:
     generate = llm(
         "improve_generate",
         SYSTEM_PROMPT_IMPROVE,
-        model="sonnet",
         temperature=0.7,
         reads={"aide_prompt.md"},
         writes={"candidate.py"},
@@ -182,7 +180,6 @@ def _debug_package() -> Package:
     generate = llm(
         "debug_generate",
         SYSTEM_PROMPT_DEBUG,
-        model="sonnet",
         temperature=0.5,
         reads={"aide_prompt.md"},
         writes={"candidate.py"},

@@ -91,13 +91,18 @@ def llm(
     node_id: str,
     system_prompt: str,
     *,
-    model: str = "sonnet",
+    model: str = "",
     temperature: float = 0.7,
     reads: Iterable[str] = (),
     writes: Iterable[str] = (),
     max_turns: int = 10,
 ) -> LLMNode:
-    """A one-shot LLM call that turns its ``reads`` into its ``writes``."""
+    """A one-shot LLM call that turns its ``reads`` into its ``writes``.
+
+    ``model`` is empty by default: the graph does not pin a model or provider,
+    and the runtime supplies its own selection. A non-empty value is only a
+    hint a runtime may honor.
+    """
     return LLMNode(
         id=node_id,
         system_prompt=system_prompt,
@@ -114,12 +119,15 @@ def agent(
     prompt_template: str,
     *,
     role: AgentRole = AgentRole.BUILDER,
-    model: str = "sonnet",
+    model: str = "",
     max_iterations: int = 10,
     reads: Iterable[str] = (),
     writes: Iterable[str] = (),
 ) -> AgentNode:
-    """A tool-using agent node — the spine runs it as a content subagent."""
+    """A tool-using agent node — the spine runs it as a content subagent.
+
+    ``model`` is empty by default: the graph does not pin a model or provider.
+    """
     return AgentNode(
         id=node_id,
         role=role,

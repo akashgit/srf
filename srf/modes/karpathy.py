@@ -85,7 +85,6 @@ def _iteration_package():
             "agent",
             AGENT_SYSTEM_PROMPT,
             role=AgentRole.BUILDER,
-            model="sonnet",
             max_iterations=10,
             reads={"agent_prompt.md"},
             writes={"candidate.py"},

@@ -127,7 +127,6 @@ def _draft_package(stage_name: str) -> Package:
     generate = llm(
         f"draft_gen_{stage_name}",
         STAGE_PROMPTS.get(stage_name, STAGE_PROMPTS["initial"]),
-        model="sonnet",
         temperature=0.7,
         reads={"aide_prompt.md"},
         writes={"candidate.py"},
@@ -154,7 +153,6 @@ def _improve_package(stage_name: str) -> Package:
     generate = llm(
         f"improve_gen_{stage_name}",
         STAGE_PROMPTS.get(stage_name, STAGE_PROMPTS["tuning"]),
-        model="sonnet",
         temperature=0.7,
         reads={"aide_prompt.md"},
         writes={"candidate.py"},
@@ -181,7 +179,6 @@ def _debug_package(stage_name: str) -> Package:
     generate = llm(
         f"debug_gen_{stage_name}",
         DEBUG_PROMPT,
-        model="sonnet",
         temperature=0.5,
         reads={"aide_prompt.md"},
         writes={"candidate.py"},

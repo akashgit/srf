@@ -80,7 +80,7 @@
       ],
       "blocking": true,
       "role": "builder",
-      "model": "sonnet",
+      "model": "",
       "prompt_template": "You are an autonomous code optimization agent (inspired by Karpathy's approach). You observe evaluation output, reason about what to change, and iterate. Think step by step. Output a single fenced code block with the complete solution.",
       "tools": [],
       "timeout": null,
