@@ -69,6 +69,7 @@ def test_graph_is_flat_not_nested(workflows: dict[str, Workflow], mode: str) -> 
         "knob_values",
         "knob_bounds",
         "knob_expandable",
+        "knob_specs",
         "declared_capabilities",
     }
     assert isinstance(payload["nodes"], dict)
