@@ -216,5 +216,49 @@
       15.0,
       20.0
     ]
+  },
+  "knob_specs": {
+    "temperature": {
+      "kind": "threshold",
+      "node_id": "generate",
+      "default": 0.8,
+      "bounds": [
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        1.0
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "LLM sampling temperature"
+    },
+    "parent_selection": {
+      "kind": "prompt",
+      "node_id": "sample",
+      "default": "best",
+      "bounds": [
+        "best",
+        "epsilon_greedy",
+        "power_law",
+        "uniform"
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "Default parent selection strategy"
+    },
+    "meta_interval": {
+      "kind": "threshold",
+      "node_id": "sample",
+      "default": 15.0,
+      "bounds": [
+        10.0,
+        15.0,
+        20.0
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "Iterations between meta-evolution"
+    }
   }
 }

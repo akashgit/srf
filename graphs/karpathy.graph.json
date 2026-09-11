@@ -181,5 +181,35 @@
       20.0,
       50.0
     ]
+  },
+  "knob_specs": {
+    "temperature": {
+      "kind": "threshold",
+      "node_id": "agent",
+      "default": 0.7,
+      "bounds": [
+        0.3,
+        0.5,
+        0.7,
+        0.9
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "LLM sampling temperature"
+    },
+    "max_turns": {
+      "kind": "threshold",
+      "node_id": "agent",
+      "default": 10.0,
+      "bounds": [
+        5.0,
+        10.0,
+        20.0,
+        50.0
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "Maximum agent turns per iteration"
+    }
   }
 }

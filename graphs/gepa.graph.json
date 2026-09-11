@@ -346,5 +346,77 @@
       "lenient",
       "off"
     ]
+  },
+  "knob_specs": {
+    "temperature": {
+      "kind": "threshold",
+      "node_id": "generate_code",
+      "default": 0.7,
+      "bounds": [
+        0.3,
+        0.5,
+        0.7,
+        0.9,
+        1.0
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "LLM sampling temperature"
+    },
+    "parent_selection": {
+      "kind": "prompt",
+      "node_id": "select_parent",
+      "default": "best",
+      "bounds": [
+        "best",
+        "pareto",
+        "epsilon_greedy"
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "How parents are chosen for mutation"
+    },
+    "max_rejection_context": {
+      "kind": "threshold",
+      "node_id": "build_reflective_prompt",
+      "default": 5.0,
+      "bounds": [
+        3.0,
+        5.0,
+        8.0,
+        12.0
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "Rejected attempts shown in reflective prompt"
+    },
+    "merge_stagnation_threshold": {
+      "kind": "threshold",
+      "node_id": "find_merge_candidates",
+      "default": 15.0,
+      "bounds": [
+        5.0,
+        10.0,
+        15.0,
+        20.0,
+        30.0
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "Iterations without improvement before merge triggers"
+    },
+    "acceptance_mode": {
+      "kind": "prompt",
+      "node_id": "accept_or_reject",
+      "default": "strict",
+      "bounds": [
+        "strict",
+        "lenient",
+        "off"
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "How strict the acceptance gate is"
+    }
   }
 }

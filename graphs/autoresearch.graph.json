@@ -229,5 +229,34 @@
       3.0,
       5.0
     ]
+  },
+  "knob_specs": {
+    "temperature": {
+      "kind": "threshold",
+      "node_id": "optimize_llm",
+      "default": 0.7,
+      "bounds": [
+        0.3,
+        0.5,
+        0.7,
+        0.9
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "LLM sampling temperature"
+    },
+    "research_depth": {
+      "kind": "threshold",
+      "node_id": "research_phase",
+      "default": 3.0,
+      "bounds": [
+        1.0,
+        3.0,
+        5.0
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "Number of research iterations"
+    }
   }
 }

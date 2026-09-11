@@ -323,5 +323,49 @@
       0.9,
       1.0
     ]
+  },
+  "knob_specs": {
+    "temperature": {
+      "kind": "threshold",
+      "node_id": "normal_generate",
+      "default": 0.7,
+      "bounds": [
+        0.3,
+        0.5,
+        0.7,
+        0.9,
+        1.0
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "LLM sampling temperature"
+    },
+    "parent_selection": {
+      "kind": "prompt",
+      "node_id": "adaptive_sample",
+      "default": "best",
+      "bounds": [
+        "best",
+        "epsilon_greedy",
+        "power_law",
+        "uniform"
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "Parent selection strategy"
+    },
+    "meta_temperature": {
+      "kind": "threshold",
+      "node_id": "meta_generate",
+      "default": 1.0,
+      "bounds": [
+        0.8,
+        0.9,
+        1.0
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "Temperature for meta-strategy exploration"
+    }
   }
 }

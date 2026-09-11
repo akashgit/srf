@@ -325,5 +325,34 @@
       20.0,
       50.0
     ]
+  },
+  "knob_specs": {
+    "temperature": {
+      "kind": "threshold",
+      "node_id": "exp_llm",
+      "default": 0.7,
+      "bounds": [
+        0.3,
+        0.5,
+        0.7,
+        0.9
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "LLM sampling temperature"
+    },
+    "experiment_budget": {
+      "kind": "threshold",
+      "node_id": "budget_check",
+      "default": 20.0,
+      "bounds": [
+        10.0,
+        20.0,
+        50.0
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "Budget for experimentation stage"
+    }
   }
 }

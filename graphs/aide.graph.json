@@ -352,5 +352,48 @@
       10.0,
       20.0
     ]
+  },
+  "knob_specs": {
+    "temperature": {
+      "kind": "threshold",
+      "node_id": "draft_generate",
+      "default": 0.7,
+      "bounds": [
+        0.3,
+        0.5,
+        0.7,
+        0.9
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "LLM sampling temperature"
+    },
+    "debug_prob": {
+      "kind": "threshold",
+      "node_id": "search_policy",
+      "default": 0.3,
+      "bounds": [
+        0.1,
+        0.2,
+        0.3,
+        0.5
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "Probability of debugging a buggy node"
+    },
+    "max_tree_depth": {
+      "kind": "threshold",
+      "node_id": "tree_update",
+      "default": 10.0,
+      "bounds": [
+        5.0,
+        10.0,
+        20.0
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "Maximum tree depth"
+    }
   }
 }

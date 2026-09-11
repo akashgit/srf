@@ -418,5 +418,36 @@
       0.9,
       1.0
     ]
+  },
+  "knob_specs": {
+    "n_candidates": {
+      "kind": "threshold",
+      "node_id": "fork_best_of_n-samples",
+      "default": 5.0,
+      "bounds": [
+        3.0,
+        5.0,
+        10.0,
+        20.0
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "Number of independent candidates the fork fans out"
+    },
+    "temperature": {
+      "kind": "threshold",
+      "node_id": "generate_0",
+      "default": 0.8,
+      "bounds": [
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        1.0
+      ],
+      "expandable": false,
+      "expansion_hint": "",
+      "description": "LLM sampling temperature"
+    }
   }
 }
