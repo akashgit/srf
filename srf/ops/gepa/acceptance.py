@@ -13,6 +13,20 @@ from srf.ops.gepa.state import load_state, save_state
 
 logger = structlog.get_logger()
 
+#: Knobs this op reads from SRF_KNOBS. Declared here because the op is the only
+#: thing that knows what it consumes: an op-level knob has no node field, so the
+#: mode's optimizable surface cannot be derived from the graph alone.
+KNOBS = {
+    "acceptance_mode": {
+        "kind": "prompt",
+        "default": "strict",
+        "bounds": ["strict", "lenient", "off"],
+        "expandable": False,
+        "description": "how a child is compared against its parent: strict keeps "
+                       "only improvements, lenient also keeps ties, off keeps everything",
+    },
+}
+
 
 def accept_or_reject(ctx: Any) -> None:
     """Compare child score to parent. Update population/genealogy/histories.
